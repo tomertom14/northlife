@@ -57,4 +57,4 @@ Browser evidence: [desktop](phase-1-desktop.png) and [mobile](phase-1-mobile.png
 - [x] Running PostgreSQL makes readiness healthy.
 - [x] Stopped PostgreSQL makes readiness unhealthy.
 - [x] Public and management shells work on desktop and mobile.
-- [ ] CI passes on main.
+- [x] CI passes on main. [Run 35757436510](https://github.com/tomertom14/northlife/actions/runs/35757436510)
