@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using NorthLife.Api.Data;
 using NorthLife.Api.Health;
+using NorthLife.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +33,9 @@ if (string.IsNullOrWhiteSpace(connectionString))
 }
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<EventLifecycleService>();
+builder.Services.AddScoped<DevelopmentDataSeeder>();
 builder.Services
     .AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
@@ -49,6 +53,15 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+if (args.Contains("--seed-data", StringComparer.OrdinalIgnoreCase))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await dbContext.Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<DevelopmentDataSeeder>().SeedAsync();
+    return;
+}
 
 app.UseExceptionHandler();
 

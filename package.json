@@ -7,6 +7,8 @@
     "build:web": "npm --prefix frontend run build",
     "test": "npm run test:api && npm run test:web",
     "test:api": "dotnet test NorthLife.slnx --configuration Release",
-    "test:web": "npm --prefix frontend run test -- --watch=false"
+    "test:web": "npm --prefix frontend run test -- --watch=false",
+    "db:migrate": "dotnet tool run dotnet-ef database update --project backend/NorthLife.Api --startup-project backend/NorthLife.Api",
+    "db:seed": "dotnet run --project backend/NorthLife.Api -- --seed-data"
   }
 }

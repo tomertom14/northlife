@@ -4,7 +4,7 @@ NorthLife is a Hebrew, RTL platform for discovering events and activities in nor
 
 ## Current status
 
-Phase 1 foundation: Angular shell, ASP.NET Core API, PostgreSQL development service, health checks, tests, and CI.
+Phase 2 domain foundation: Phase 1 runtime plus PostgreSQL schema, event lifecycle, migration, and repeatable development fixtures.
 
 ## Project documents
 
@@ -30,6 +30,13 @@ Start PostgreSQL:
 
 ~~~powershell
 docker compose up -d postgres
+~~~
+
+Apply schema and add development fixtures:
+
+~~~powershell
+npm run db:migrate
+npm run db:seed
 ~~~
 
 Start API:

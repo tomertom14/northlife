@@ -11,6 +11,22 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    env:
+      ConnectionStrings__Database: Host=localhost;Port=5432;Database=northlife;Username=northlife;Password=northlife_ci_only
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: northlife
+          POSTGRES_USER: northlife
+          POSTGRES_PASSWORD: northlife_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U northlife -d northlife"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v5
@@ -19,6 +35,10 @@ jobs:
       - run: dotnet restore NorthLife.slnx
       - run: dotnet build NorthLife.slnx --configuration Release --no-restore
       - run: dotnet test NorthLife.slnx --configuration Release --no-build
+      - run: dotnet tool restore
+      - run: dotnet tool run dotnet-ef database update --project backend/NorthLife.Api --startup-project backend/NorthLife.Api
+      - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --seed-data
+      - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --seed-data
 
   frontend:
     runs-on: ubuntu-latest
