@@ -1,0 +1,23 @@
+:root {
+  color-scheme: light;
+  --accent: #2e6f59;
+  --accent-dark: #1f5141;
+  --background: #fafcf8;
+  --border: #dce5dd;
+  --foreground: #15251f;
+  --muted: #5f6f68;
+  font-family: Arial, "Noto Sans Hebrew", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--background); color: var(--foreground); }
+body { margin: 0; min-width: 320px; }
+button, input, textarea, select { font: inherit; }
+a { color: inherit; text-decoration: none; }
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid #d69d37;
+  outline-offset: 3px;
+}

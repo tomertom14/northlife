@@ -33,9 +33,9 @@ git ls-remote origin refs/heads/main
 - [x] Base plan exists and renders as Markdown.
 - [x] Requirements document remains unchanged.
 - [x] Local Git repository uses `main`.
-- [ ] Public `tomertom14/northlife` repository exists.
-- [ ] Local `origin` points to the public repository.
-- [ ] Local and remote commit IDs match.
-- [ ] Working tree is clean.
+- [x] Public `tomertom14/northlife` repository exists.
+- [x] Local `origin` points to the public repository.
+- [x] Local and remote commit IDs match after the verification commit is pushed.
+- [x] Working tree is clean after the verification commit is pushed.
 
-Remote checks remain pending until repository creation and push complete.
+Public repository: <https://github.com/tomertom14/northlife>

@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/backend/">
+    <Project Path="backend/NorthLife.Api/NorthLife.Api.csproj" />
+    <Project Path="backend/NorthLife.Tests/NorthLife.Tests.csproj" />
+  </Folder>
+</Solution>

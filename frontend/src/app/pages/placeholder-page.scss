@@ -1,0 +1,10 @@
+.panel {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: clamp(1.5rem, 5vw, 3rem);
+}
+
+.eyebrow { color: var(--accent-dark); font-weight: 800; }
+h1 { margin-bottom: .75rem; }
+p:last-child { color: var(--muted); }

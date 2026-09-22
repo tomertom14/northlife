@@ -1,0 +1,18 @@
+:host {
+  background: #f3f5f0;
+  display: block;
+  min-height: 100dvh;
+}
+
+.management-header {
+  align-items: center;
+  background: #16372c;
+  color: white;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem clamp(1rem, 4vw, 4rem);
+}
+
+.management-header a { color: white; font-weight: 700; }
+.management-main { margin: 0 auto; max-width: 72rem; padding: clamp(1.5rem, 5vw, 4rem); }

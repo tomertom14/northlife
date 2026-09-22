@@ -1,0 +1,42 @@
+:host { display: block; min-height: 100dvh; }
+
+.site-header {
+  align-items: center;
+  background: rgba(250, 252, 248, 0.92);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem clamp(1rem, 4vw, 4rem);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand {
+  align-items: center;
+  display: flex;
+  font-size: 1.2rem;
+  font-weight: 800;
+  gap: .65rem;
+}
+
+.brand-mark {
+  align-items: center;
+  background: var(--accent);
+  border-radius: .7rem;
+  color: white;
+  display: inline-flex;
+  height: 2.25rem;
+  justify-content: center;
+  width: 2.25rem;
+}
+
+nav { display: flex; gap: 1.25rem; }
+nav a { color: var(--muted); font-weight: 650; }
+nav a:hover, nav a:focus-visible { color: var(--accent-dark); }
+main { min-height: calc(100dvh - 73px); }
+
+@media (max-width: 520px) {
+  .site-header { align-items: flex-start; }
+  nav { flex-direction: column; gap: .35rem; }
+}

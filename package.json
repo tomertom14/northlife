@@ -1,0 +1,12 @@
+{
+  "name": "northlife",
+  "private": true,
+  "scripts": {
+    "build": "npm run build:api && npm run build:web",
+    "build:api": "dotnet build NorthLife.slnx --configuration Release",
+    "build:web": "npm --prefix frontend run build",
+    "test": "npm run test:api && npm run test:web",
+    "test:api": "dotnet test NorthLife.slnx --configuration Release",
+    "test:web": "npm --prefix frontend run test -- --watch=false"
+  }
+}
