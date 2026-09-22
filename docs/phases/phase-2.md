@@ -60,4 +60,4 @@ Expected counts remain 3, 3, and 6 after two seed runs. Transactional checks mus
 - [x] Lifecycle and revision tests pass.
 - [x] UTC and overnight fixtures persist through Npgsql.
 - [x] Backend build passes with zero warnings.
-- [ ] CI migration and double-seed checks pass on main.
+- [x] CI migration and double-seed checks pass on main. [Run 35759448053](https://github.com/tomertom14/northlife/actions/runs/35759448053)
