@@ -37,4 +37,4 @@ The CI database smoke test applies migrations, seeds twice to prove idempotence,
 - [x] Pending and expired events excluded
 - [x] EF model matches migrations
 - [x] Backend and frontend regression suites pass
-- [ ] Main-branch CI public API smoke test passes
+- [x] Main-branch CI public API smoke test passes: https://github.com/tomertom14/northlife/actions/runs/35820882013
