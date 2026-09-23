@@ -56,4 +56,4 @@ Screenshot:
 - [x] Automated tests use a fake map adapter
 - [x] Backend and frontend regression tests pass
 - [ ] Manual Google Maps check with a restricted API key and map ID
-- [ ] Main-branch CI map smoke test passes
+- [x] Main-branch CI map smoke test passes ([run 35876161571](https://github.com/tomertom14/northlife/actions/runs/35876161571))
