@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using NorthLife.Api.Data;
 using NorthLife.Api.Health;
 using NorthLife.Api.Services;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,7 +23,9 @@ builder.Services.AddProblemDetails(options =>
     };
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 
 var connectionString = builder.Configuration.GetConnectionString("Database");
@@ -35,6 +38,8 @@ if (string.IsNullOrWhiteSpace(connectionString))
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<EventLifecycleService>();
+builder.Services.AddSingleton<EventTimeWindowFactory>();
+builder.Services.AddScoped<PublicEventQueryService>();
 builder.Services.AddScoped<DevelopmentDataSeeder>();
 builder.Services
     .AddHealthChecks()

@@ -39,6 +39,20 @@ jobs:
       - run: dotnet tool run dotnet-ef database update --project backend/NorthLife.Api --startup-project backend/NorthLife.Api
       - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --seed-data
       - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --seed-data
+      - name: Verify public event API
+        shell: bash
+        run: |
+          dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --urls http://127.0.0.1:5080 > api.log 2>&1 &
+          api_pid=$!
+          trap 'kill $api_pid' EXIT
+          for attempt in {1..20}; do
+            curl --fail --silent http://127.0.0.1:5080/health/ready && break
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:5080/api/events/today | jq -e '.totalCount >= 1 and (.items | length) >= 1'
+          curl --fail --silent http://127.0.0.1:5080/api/events/top-picks | jq -e 'length >= 1'
+          curl --fail --silent http://127.0.0.1:5080/api/events/019924c0-0000-7000-a000-000000000001 | jq -e '.title != null'
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" http://127.0.0.1:5080/api/events/019924c0-0000-7000-a000-000000000004)" = "404"
 
   frontend:
     runs-on: ubuntu-latest

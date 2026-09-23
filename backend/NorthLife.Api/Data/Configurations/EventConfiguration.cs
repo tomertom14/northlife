@@ -61,6 +61,12 @@ public sealed class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.HasIndex(eventItem => new { eventItem.Status, eventItem.StartAtUtc, eventItem.Id })
             .HasDatabaseName("ix_events_status_start_id")
             .HasFilter("deleted_at_utc IS NULL");
+        builder.HasIndex(eventItem => new { eventItem.Status, eventItem.Category, eventItem.StartAtUtc, eventItem.Id })
+            .HasDatabaseName("ix_events_status_category_start_id")
+            .HasFilter("deleted_at_utc IS NULL");
+        builder.HasIndex(eventItem => new { eventItem.Status, eventItem.Locality, eventItem.StartAtUtc, eventItem.Id })
+            .HasDatabaseName("ix_events_status_locality_start_id")
+            .HasFilter("deleted_at_utc IS NULL");
         builder.HasIndex(eventItem => eventItem.EndAtUtc)
             .HasDatabaseName("ix_events_end_at")
             .HasFilter("deleted_at_utc IS NULL");

@@ -4,7 +4,7 @@ NorthLife is a Hebrew, RTL platform for discovering events and activities in nor
 
 ## Current status
 
-Phase 2 domain foundation: Phase 1 runtime plus PostgreSQL schema, event lifecycle, migration, and repeatable development fixtures.
+Phase 3 public API: anonymous event feed, date presets, filters, pagination, top picks, event details, schema, lifecycle, and fixtures.
 
 ## Project documents
 
