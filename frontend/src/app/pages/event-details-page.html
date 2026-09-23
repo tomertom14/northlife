@@ -1,0 +1,77 @@
+<section class="details-shell">
+  <button class="back-button" type="button" (click)="goBack()">
+    <span aria-hidden="true">→</span>
+    חזרה לאירועים
+  </button>
+
+  @if (loading()) {
+    <div class="details-skeleton" aria-label="טוען פרטי אירוע" aria-busy="true">
+      <span></span><i></i><i></i><i></i>
+    </div>
+  } @else if (unavailable()) {
+    <div class="state-card">
+      <span aria-hidden="true">◇</span>
+      <h1>האירוע אינו זמין</h1>
+      <p>ייתכן שהאירוע הסתיים, הוסר או שהקישור אינו תקין.</p>
+      <a routerLink="/">חזרה לכל האירועים</a>
+    </div>
+  } @else if (failed()) {
+    <div class="state-card" role="alert">
+      <span aria-hidden="true">↻</span>
+      <h1>לא הצלחנו לטעון את האירוע</h1>
+      <p>ייתכן שיש בעיית חיבור זמנית.</p>
+      <button type="button" (click)="reload()">ניסיון נוסף</button>
+    </div>
+  } @else if (event(); as item) {
+    <article>
+      <div class="event-image">
+        <img [src]="imageFor(item)" alt="" width="1200" height="700" />
+        @if (item.isHighlighted) {
+          <span>בחירת המערכת</span>
+        }
+      </div>
+
+      <div class="event-layout">
+        <div class="event-main">
+          <p class="eyebrow">{{ categoryLabels[item.category] }}</p>
+          <h1>{{ item.title }}</h1>
+          <p class="lead">{{ item.description }}</p>
+
+          @if (item.tags.length > 0) {
+            <ul class="tags" aria-label="תגיות">
+              @for (tag of item.tags; track tag) {
+                <li>{{ tag }}</li>
+              }
+            </ul>
+          }
+
+          <section class="organizer" aria-labelledby="organizer-title">
+            <p class="eyebrow">מי מארגן?</p>
+            <h2 id="organizer-title">{{ item.organizerName }}</h2>
+          </section>
+        </div>
+
+        <aside aria-label="מידע שימושי">
+          <dl>
+            <div>
+              <dt>מתי</dt>
+              <dd>{{ formatDate(item.startAt) }}</dd>
+            </div>
+            <div>
+              <dt>איפה</dt>
+              <dd>{{ item.venueName }}<br />{{ item.address }}, {{ item.locality }}</dd>
+            </div>
+            <div>
+              <dt>מחיר</dt>
+              <dd>{{ formatPrice(item.price) }}</dd>
+            </div>
+          </dl>
+          <a class="map-link" [href]="mapUrl(item)" target="_blank" rel="noopener">
+            ניווט ב-Google Maps
+            <span aria-hidden="true">↗</span>
+          </a>
+        </aside>
+      </div>
+    </article>
+  }
+</section>

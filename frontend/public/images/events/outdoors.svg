@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" role="img" aria-label="נוף הרים ועמק ירוק">
+<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b9ddd8"/><stop offset="1" stop-color="#fff0bf"/></linearGradient><linearGradient id="h"><stop stop-color="#497b65"/><stop offset="1" stop-color="#244d43"/></linearGradient></defs>
+<rect width="1200" height="750" fill="url(#s)"/><circle cx="205" cy="160" r="82" fill="#ffd36e"/>
+<path d="M0 520 250 240l150 180 190-250 250 310 140-150 220 215v205H0z" fill="#6b9b79"/>
+<path d="M0 590 230 420l190 120 170-230 230 260 180-130 200 140v170H0z" fill="url(#h)"/>
+<path d="M560 750c-28-150 22-249 125-342-50 126-40 236 8 342z" fill="#e6d095"/>
+</svg>
