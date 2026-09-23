@@ -62,4 +62,4 @@ Screenshots:
 - [x] Public browsing remains anonymous
 - [x] Backend and frontend tests pass
 - [x] Mobile auth accessibility audit has zero violations
-- [ ] Main-branch CI authentication smoke test passes
+- [x] Main-branch CI authentication smoke test passes: https://github.com/tomertom14/northlife/actions/runs/35824497818
