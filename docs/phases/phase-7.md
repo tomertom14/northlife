@@ -51,4 +51,4 @@ Screenshot:
 - [x] Stale writes return HTTP 409
 - [x] Mobile dashboard flow works without browser errors
 - [x] Backend and frontend regression tests pass
-- [ ] Main-branch CI owner-management smoke test passes
+- [x] Main-branch CI owner-management smoke test passes ([run 35827392528](https://github.com/tomertom14/northlife/actions/runs/35827392528))
