@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: northlife
+    runtime: docker
+    region: frankfurt
+    plan: 0.5c-512mb
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeployTrigger: checksPass
+    healthCheckPath: /health/ready
+    preDeployCommand: dotnet NorthLife.Api.dll --migrate
+    disk:
+      name: event-images
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: Authentication__JwtKey
+        generateValue: true
+      - key: Database__Host
+        fromDatabase:
+          name: northlife-db
+          property: host
+      - key: Database__Port
+        fromDatabase:
+          name: northlife-db
+          property: port
+      - key: Database__Name
+        fromDatabase:
+          name: northlife-db
+          property: database
+      - key: Database__User
+        fromDatabase:
+          name: northlife-db
+          property: user
+      - key: Database__Password
+        fromDatabase:
+          name: northlife-db
+          property: password
+      - key: GoogleMaps__ApiKey
+        sync: false
+      - key: GoogleMaps__MapId
+        sync: false
+
+databases:
+  - name: northlife-db
+    region: frankfurt
+    plan: 0.1c-256mb
+    ipAllowList: []

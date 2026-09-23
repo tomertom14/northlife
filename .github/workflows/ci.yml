@@ -140,3 +140,13 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run test -- --watch=false
+
+  production-image:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --tag northlife:ci .
+      - name: Verify production artifact and non-root user
+        run: |
+          docker run --rm --entrypoint sh northlife:ci -c 'test -f /app/wwwroot/index.html && test "$(id -u)" != "0"'

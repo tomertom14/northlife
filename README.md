@@ -4,13 +4,14 @@ NorthLife is a Hebrew, RTL platform for discovering events and activities in nor
 
 ## Current status
 
-Phase 9 maps: bounded public event queries, grouped Google Maps markers, map-based coordinate selection, navigation links, and usable no-key/geolocation fallbacks.
+Phase 10 production packaging: one-origin container, explicit migrations, Render Blueprint, persistent images, structured request logs, and operations runbook.
 
 ## Project documents
 
 - [Initial requirements](NorthLife_Initial_Project_Requirements.md)
 - [Base implementation plan](NorthLife_Base_Plan.md)
 - [Phase verification records](docs/phases/README.md)
+- [Deployment and operations](docs/deployment.md)
 
 ## Prerequisites
 

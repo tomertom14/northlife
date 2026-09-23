@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using NorthLife.Api.Authentication;
@@ -13,6 +14,8 @@ using NorthLife.Api.Services;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using System.Diagnostics;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +41,19 @@ builder.Services.AddControllers()
 builder.Services.AddOpenApi();
 
 var connectionString = builder.Configuration.GetConnectionString("Database");
+if (string.IsNullOrWhiteSpace(connectionString) &&
+    !string.IsNullOrWhiteSpace(builder.Configuration["Database:Host"]))
+{
+    connectionString = new NpgsqlConnectionStringBuilder
+    {
+        Host = builder.Configuration["Database:Host"],
+        Port = builder.Configuration.GetValue("Database:Port", 5432),
+        Database = builder.Configuration["Database:Name"],
+        Username = builder.Configuration["Database:User"],
+        Password = builder.Configuration["Database:Password"],
+        SslMode = SslMode.Prefer,
+    }.ConnectionString;
+}
 if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException(
@@ -172,6 +188,12 @@ builder.Services.AddCors(options =>
         }
     });
 });
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 var app = builder.Build();
 
@@ -201,8 +223,29 @@ if (args.Contains("--cleanup-images", StringComparer.OrdinalIgnoreCase))
     app.Logger.LogInformation("Removed {ImageCount} orphaned images.", removed);
     return;
 }
+if (args.Contains("--migrate", StringComparer.OrdinalIgnoreCase))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+    app.Logger.LogInformation("Database migrations applied.");
+    return;
+}
 
-
+app.UseForwardedHeaders();
+app.Use(async (context, next) =>
+{
+    var stopwatch = Stopwatch.StartNew();
+    try { await next(); }
+    finally
+    {
+        app.Logger.LogInformation(
+            "HTTP {Method} {Path} returned {StatusCode} in {ElapsedMilliseconds} ms",
+            context.Request.Method,
+            context.Request.Path,
+            context.Response.StatusCode,
+            stopwatch.Elapsed.TotalMilliseconds);
+    }
+});
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
@@ -212,6 +255,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -225,6 +270,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready"),
 });
+app.MapFallbackToFile("index.html");
 
 app.Run();
 
