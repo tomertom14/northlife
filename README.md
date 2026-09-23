@@ -4,7 +4,7 @@ NorthLife is a Hebrew, RTL platform for discovering events and activities in nor
 
 ## Current status
 
-Phase 7 owner event management: authenticated, owner-scoped creation, editing, deletion, moderation status, and optimistic concurrency.
+Phase 8 administrator moderation: filtered review queue, approval, rejection reasons, direct publishing, editing, highlights, deletion, and revision conflicts.
 
 ## Project documents
 
@@ -73,6 +73,8 @@ The command is repeatable for the same administrator email and refuses to promot
 ## Owner event management
 
 Business owners sign in at `/manage/login`. The dashboard uploads an event image, creates events in `Pending` status, lists moderation status and rejection reasons, and supports revision-protected edits and deletion. Editing a published event immediately returns it to `Pending` review.
+
+Administrators use `/manage/admin` to filter the full event queue, approve or reject owner submissions, publish events directly, edit, highlight, and delete. Every moderation action uses the current event revision.
 
 ## Image storage
 

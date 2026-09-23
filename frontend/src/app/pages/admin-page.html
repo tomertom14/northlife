@@ -1,0 +1,62 @@
+<section>
+  <header class="dashboard-head">
+    <div><p class="eyebrow">ניהול מערכת</p><h1>מרכז הבקרה</h1><p>{{ auth.user()?.fullName }}</p></div>
+    <button class="secondary" type="button" (click)="logout()">התנתקות</button>
+  </header>
+
+  @if (errorMessage()) { <p class="form-error" role="alert">{{ errorMessage() }}</p> }
+  @if (successMessage()) { <p class="form-success" role="status">{{ successMessage() }}</p> }
+
+  <section class="panel">
+    <h2>{{ editingId() ? 'עריכת אירוע' : 'יצירה ופרסום ישיר' }}</h2>
+    <form (ngSubmit)="save()">
+      <div class="form-grid">
+        <label>כותרת<input name="adminTitle" [(ngModel)]="form.title" required maxlength="150" /></label>
+        <label>קטגוריה<select name="adminCategory" [(ngModel)]="form.category">@for (category of categories; track category) { <option [value]="category">{{ categoryLabels[category] }}</option> }</select></label>
+        <label class="wide">תיאור<textarea name="adminDescription" [(ngModel)]="form.description" required maxlength="5000"></textarea></label>
+        <label>מקום<input name="adminVenue" [(ngModel)]="form.venueName" required /></label>
+        <label>יישוב<input name="adminLocality" [(ngModel)]="form.locality" required /></label>
+        <label class="wide">כתובת<input name="adminAddress" [(ngModel)]="form.address" required /></label>
+        <label>קו רוחב<input name="adminLatitude" type="number" step="any" min="-90" max="90" [(ngModel)]="form.latitude" required /></label>
+        <label>קו אורך<input name="adminLongitude" type="number" step="any" min="-180" max="180" [(ngModel)]="form.longitude" required /></label>
+        <label>התחלה<input name="adminStart" type="datetime-local" [(ngModel)]="form.startAt" required /></label>
+        <label>סיום<input name="adminEnd" type="datetime-local" [(ngModel)]="form.endAt" required /></label>
+        <label>מחיר ₪<input name="adminPrice" type="number" min="0" step="0.01" [(ngModel)]="form.price" required /></label>
+        <label>מארגן<input name="adminOrganizer" [(ngModel)]="form.organizerName" required /></label>
+        <label class="wide">תגיות<input name="adminTags" [(ngModel)]="form.tagsText" /></label>
+        <label class="wide">מזהה תמונה<input name="adminImageId" [(ngModel)]="form.imageId" required readonly /></label>
+      </div>
+      <div class="actions">
+        <button type="submit">{{ editingId() ? 'שמירת שינוי' : 'פרסום אירוע' }}</button>
+        @if (editingId()) { <button class="secondary" type="button" (click)="cancelEdit()">ביטול</button> }
+      </div>
+    </form>
+    <app-event-image-upload (uploaded)="imageUploaded($event)" />
+  </section>
+
+  <section class="panel events-panel">
+    <h2>תור בדיקה</h2>
+    <form class="filters" (ngSubmit)="load()">
+      <label>סטטוס<select name="status" [(ngModel)]="status"><option value="">הכול</option><option value="Pending">ממתין</option><option value="Published">פורסם</option><option value="Rejected">נדחה</option></select></label>
+      <label>חיפוש<input name="search" [(ngModel)]="search" maxlength="100" /></label>
+      <button class="secondary" type="submit">סינון</button>
+    </form>
+    @if (loading()) { <p>טוען…</p> }
+    <div class="owner-events">
+      @for (event of events(); track event.id) {
+        <article>
+          <div><span class="status {{ event.status.toLowerCase() }}">{{ statusLabel(event.status) }}</span><h3>{{ event.title }}</h3><p>{{ event.ownerBusinessName }} · {{ event.locality }} · גרסה {{ event.revision }}</p></div>
+          <div>
+            @if (event.status === 'Pending') { <label>סיבת דחייה<input [name]="'reason-' + event.id" [(ngModel)]="rejectionReasons[event.id]" maxlength="1000" /></label> }
+            <div class="actions">
+              @if (event.status === 'Pending') { <button type="button" (click)="approve(event)">אישור</button><button class="danger" type="button" (click)="reject(event)">דחייה</button> }
+              @if (event.status === 'Published') { <button class="secondary" type="button" (click)="highlight(event)">{{ event.isHighlighted ? 'הסרת הדגשה' : 'הדגשה' }}</button> }
+              <button class="secondary" type="button" (click)="edit(event)">עריכה</button>
+              <button class="danger" type="button" (click)="delete(event)">מחיקה</button>
+            </div>
+          </div>
+        </article>
+      } @empty { @if (!loading()) { <p>אין אירועים במסנן הזה.</p> } }
+    </div>
+  </section>
+</section>

@@ -75,6 +75,7 @@ jobs:
           test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request POST http://127.0.0.1:5080/api/auth/logout --header "Authorization: Bearer $token")" = "204"
 
           admin_login=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/login --header 'Content-Type: application/json' --data '{"email":"ci-admin@northlife.local","password":"NorthLifeCi12345"}')
+          admin_token=$(echo "$admin_login" | jq -r '.token')
           echo "$admin_login" | jq -e '.user.role == "Admin"'
           second_owner=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/register --header 'Content-Type: application/json' --data '{"fullName":"CI Image Owner","email":"ci-image-owner@example.com","password":"StrongPass123","phone":"0501234568","businessName":"CI Images"}')
           second_token=$(echo "$second_owner" | jq -r '.token')
@@ -97,7 +98,29 @@ jobs:
           test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request POST http://127.0.0.1:5080/api/manage/events --header "Authorization: Bearer $second_token" --header 'Content-Type: application/json' --data "$event_payload")" = "404"
           stale_payload=$(echo "$event_payload" | jq '.revision = 99')
           test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request PUT http://127.0.0.1:5080/api/manage/events/$event_id --header "Authorization: Bearer $token" --header 'Content-Type: application/json' --data "$stale_payload")" = "409"
-          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request DELETE "http://127.0.0.1:5080/api/manage/events/$event_id?revision=1" --header "Authorization: Bearer $token")" = "204"
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" http://127.0.0.1:5080/api/admin/events --header "Authorization: Bearer $token")" = "403"
+          curl --fail --silent 'http://127.0.0.1:5080/api/admin/events?status=Pending&search=CI' --header "Authorization: Bearer $admin_token" | jq -e --arg id "$event_id" 'any(.[]; .id == $id)'
+          approved=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/admin/events/$event_id/approve --header "Authorization: Bearer $admin_token" --header 'Content-Type: application/json' --data '{"revision":1}')
+          echo "$approved" | jq -e '.status == "Published" and .revision == 2'
+          curl --fail --silent http://127.0.0.1:5080/api/events/$event_id | jq -e '.title == "CI owner event"'
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request POST http://127.0.0.1:5080/api/admin/events/$event_id/reject --header "Authorization: Bearer $admin_token" --header 'Content-Type: application/json' --data '{"revision":1,"reason":"stale"}')" = "409"
+          highlighted=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/admin/events/$event_id/highlight --header "Authorization: Bearer $admin_token" --header 'Content-Type: application/json' --data '{"revision":2,"isHighlighted":true}')
+          echo "$highlighted" | jq -e '.isHighlighted == true and .revision == 3'
+
+          rejected_payload=$(echo "$event_payload" | jq '.title = "CI rejected event"')
+          rejected_event=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/manage/events --header "Authorization: Bearer $token" --header 'Content-Type: application/json' --data "$rejected_payload")
+          rejected_id=$(echo "$rejected_event" | jq -r '.id')
+          rejected=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/admin/events/$rejected_id/reject --header "Authorization: Bearer $admin_token" --header 'Content-Type: application/json' --data '{"revision":1,"reason":"Add accessibility details"}')
+          echo "$rejected" | jq -e '.status == "Rejected" and .rejectionReason == "Add accessibility details"'
+          curl --fail --silent http://127.0.0.1:5080/api/manage/events --header "Authorization: Bearer $token" | jq -e --arg id "$rejected_id" 'any(.[]; .id == $id and .rejectionReason == "Add accessibility details")'
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" http://127.0.0.1:5080/api/events/$rejected_id)" = "404"
+
+          direct_payload=$(echo "$event_payload" | jq '.title = "CI admin event"')
+          direct=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/admin/events --header "Authorization: Bearer $admin_token" --header 'Content-Type: application/json' --data "$direct_payload")
+          direct_id=$(echo "$direct" | jq -r '.id')
+          echo "$direct" | jq -e '.status == "Published" and .revision == 1'
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request DELETE "http://127.0.0.1:5080/api/admin/events/$direct_id?revision=1" --header "Authorization: Bearer $admin_token")" = "204"
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request DELETE "http://127.0.0.1:5080/api/admin/events/$event_id?revision=3" --header "Authorization: Bearer $admin_token")" = "204"
 
   frontend:
     runs-on: ubuntu-latest

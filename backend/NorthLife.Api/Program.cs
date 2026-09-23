@@ -75,6 +75,7 @@ builder.Services.AddScoped<EventImageService>();
 builder.Services.AddScoped<AdminBootstrapper>();
 builder.Services.AddScoped<EventLifecycleService>();
 builder.Services.AddScoped<OwnerEventService>();
+builder.Services.AddScoped<AdminEventService>();
 builder.Services.AddSingleton<EventTimeWindowFactory>();
 builder.Services.AddScoped<PublicEventQueryService>();
 builder.Services.AddScoped<DevelopmentDataSeeder>();

@@ -33,7 +33,9 @@ export class LoginPage {
         const requested = this.route.snapshot.queryParamMap.get('returnUrl');
         const destination = requested?.startsWith('/manage/')
           ? requested
-          : '/manage/dashboard';
+          : this.auth.user()?.role === 'Admin'
+            ? '/manage/admin'
+            : '/manage/dashboard';
         void this.router.navigateByUrl(destination);
       },
       error: (error: HttpErrorResponse) => {

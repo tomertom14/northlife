@@ -93,6 +93,18 @@ public sealed class EventLifecycleServiceTests
         Assert.Equal(EventStatus.Pending, eventItem.Status);
     }
 
+    [Fact]
+    public void Admin_edit_preserves_published_status_and_advances_revision()
+    {
+        var eventItem = CreateEvent(EventStatus.Published);
+        eventItem.Revision = 5;
+
+        _service.EditByAdmin(eventItem, 5);
+
+        Assert.Equal(EventStatus.Published, eventItem.Status);
+        Assert.Equal(6, eventItem.Revision);
+    }
+
     private static Event CreateEvent(EventStatus status) =>
         new()
         {

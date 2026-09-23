@@ -98,6 +98,20 @@ public sealed class EventLifecycleService(TimeProvider timeProvider)
         Touch(eventItem, now);
     }
 
+    public void EditByAdmin(Event eventItem, int expectedRevision)
+    {
+        EnsureRevision(eventItem, expectedRevision);
+        EnsureAvailable(eventItem);
+
+        var now = timeProvider.GetUtcNow();
+        EnsureNotExpired(eventItem, now);
+        if (eventItem.Status != EventStatus.Published)
+        {
+            eventItem.IsHighlighted = false;
+        }
+        Touch(eventItem, now);
+    }
+
     public void Delete(Event eventItem, int expectedRevision)
     {
         EnsureRevision(eventItem, expectedRevision);
