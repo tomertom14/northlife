@@ -59,4 +59,4 @@ Screenshots:
 - [x] Zero automated accessibility violations
 - [x] Frontend production build and tests
 - [x] Backend regression tests
-- [ ] Main-branch CI passes
+- [x] Main-branch CI passes: https://github.com/tomertom14/northlife/actions/runs/35822339537
