@@ -52,4 +52,4 @@ Screenshot:
 - [x] Stale moderation actions return HTTP 409
 - [x] Admin browser flow works without console or WCAG A/AA errors
 - [x] Backend and frontend regression tests pass
-- [ ] Main-branch CI moderation smoke test passes
+- [x] Main-branch CI moderation smoke test passes ([run 35874070713](https://github.com/tomertom14/northlife/actions/runs/35874070713))
