@@ -56,4 +56,4 @@ Screenshot:
 - [x] Unreferenced uploads older than 24 hours are cleaned
 - [x] Upload component works through the authenticated browser flow
 - [x] Backend and frontend regression tests pass
-- [ ] Main-branch CI image smoke test passes
+- [x] Main-branch CI image smoke test passes ([run 35826048839](https://github.com/tomertom14/northlife/actions/runs/35826048839))
