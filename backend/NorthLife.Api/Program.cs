@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using NorthLife.Api.Authentication;
 using NorthLife.Api.Data;
 using NorthLife.Api.Health;
+using NorthLife.Api.Images;
 using NorthLife.Api.Models;
 using NorthLife.Api.Services;
 using System.Text;
@@ -61,11 +62,16 @@ if (jwtOptions.TokenLifetimeMinutes != 60)
 
 builder.Services.Configure<JwtOptions>(
     builder.Configuration.GetSection(JwtOptions.SectionName));
+builder.Services.Configure<ImageStorageOptions>(
+    builder.Configuration.GetSection(ImageStorageOptions.SectionName));
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IPasswordHasher<AppUser>, PasswordHasher<AppUser>>();
 builder.Services.AddScoped<AuthTokenService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddSingleton<IImageStorage, LocalImageStorage>();
+builder.Services.AddSingleton<EventImageProcessor>();
+builder.Services.AddScoped<EventImageService>();
 builder.Services.AddScoped<AdminBootstrapper>();
 builder.Services.AddScoped<EventLifecycleService>();
 builder.Services.AddSingleton<EventTimeWindowFactory>();
@@ -184,6 +190,16 @@ if (args.Contains("--bootstrap-admin", StringComparer.OrdinalIgnoreCase))
     await scope.ServiceProvider.GetRequiredService<AdminBootstrapper>().RunAsync();
     return;
 }
+if (args.Contains("--cleanup-images", StringComparer.OrdinalIgnoreCase))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var removed = await scope.ServiceProvider
+        .GetRequiredService<EventImageService>()
+        .CleanupOrphansAsync(CancellationToken.None);
+    app.Logger.LogInformation("Removed {ImageCount} orphaned images.", removed);
+    return;
+}
+
 
 app.UseExceptionHandler();
 

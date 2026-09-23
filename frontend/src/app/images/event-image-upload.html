@@ -1,0 +1,32 @@
+<section class="upload-card" aria-labelledby="upload-title">
+  <div>
+    <p class="eyebrow">תמונת אירוע</p>
+    <h2 id="upload-title">בדיקת העלאת תמונה</h2>
+    <p class="help">JPEG, PNG או WebP, עד 5 MB. המערכת מסירה מידע נסתר ומתאימה את התמונה אוטומטית.</p>
+  </div>
+
+  <label class="file-field">
+    בחירת תמונה
+    <input type="file" accept="image/jpeg,image/png,image/webp" (change)="selectFile($event)" />
+  </label>
+
+  @if (previewUrl()) {
+    <img class="preview" [src]="previewUrl()" alt="תצוגה מקדימה של התמונה שנבחרה" />
+  }
+
+  @if (errorMessage()) {
+    <p class="error" role="alert">{{ errorMessage() }}</p>
+  }
+
+  @if (result(); as uploaded) {
+    <div class="success" role="status">
+      <strong>התמונה עובדה ונשמרה</strong>
+      <span>{{ uploaded.width }}×{{ uploaded.height }} · {{ uploaded.sizeBytes }} bytes</span>
+      <code>{{ uploaded.id }}</code>
+    </div>
+  }
+
+  <button type="button" [disabled]="uploading() || !previewUrl()" (click)="upload()">
+    {{ uploading() ? 'מעבדים…' : 'העלאת תמונה' }}
+  </button>
+</section>

@@ -14,6 +14,7 @@ jobs:
     env:
       ConnectionStrings__Database: Host=localhost;Port=5432;Database=northlife;Username=northlife;Password=northlife_ci_only
       Authentication__JwtKey: northlife-ci-only-signing-key-32-bytes
+      ImageStorage__RootPath: /tmp/northlife-images
       BootstrapAdmin__Email: ci-admin@northlife.local
       BootstrapAdmin__Password: NorthLifeCi12345
       BootstrapAdmin__FullName: CI Admin
@@ -46,7 +47,7 @@ jobs:
       - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --seed-data
       - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --seed-data
       - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --bootstrap-admin
-      - name: Verify public API and authentication
+      - name: Verify public API, authentication, and images
         shell: bash
         run: |
           dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --urls http://127.0.0.1:5080 > api.log 2>&1 &
@@ -75,6 +76,15 @@ jobs:
 
           admin_login=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/login --header 'Content-Type: application/json' --data '{"email":"ci-admin@northlife.local","password":"NorthLifeCi12345"}')
           echo "$admin_login" | jq -e '.user.role == "Admin"'
+          second_owner=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/register --header 'Content-Type: application/json' --data '{"fullName":"CI Image Owner","email":"ci-image-owner@example.com","password":"StrongPass123","phone":"0501234568","businessName":"CI Images"}')
+          second_token=$(echo "$second_owner" | jq -r '.token')
+          image=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/manage/images --header "Authorization: Bearer $token" --form 'file=@docs/screenshots/phase-5-dashboard.png;type=image/png')
+          image_id=$(echo "$image" | jq -r '.id')
+          echo "$image" | jq -e '.contentType == "image/webp" and .width <= 1600 and .height <= 1600 and .sizeBytes > 0'
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" http://127.0.0.1:5080/api/images/$image_id)" = "404"
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" http://127.0.0.1:5080/api/images/$image_id --header "Authorization: Bearer $token")" = "200"
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" http://127.0.0.1:5080/api/images/$image_id --header "Authorization: Bearer $second_token")" = "404"
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request POST http://127.0.0.1:5080/api/manage/images --header "Authorization: Bearer $token" --form 'file=@docs/screenshots/phase-5-dashboard.png;type=image/jpeg')" = "400"
 
   frontend:
     runs-on: ubuntu-latest

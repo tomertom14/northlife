@@ -4,7 +4,7 @@ NorthLife is a Hebrew, RTL platform for discovering events and activities in nor
 
 ## Current status
 
-Phase 5 authentication: business registration/login, memory-only JWT sessions, protected management routes, and administrator bootstrap.
+Phase 6 secure images: validated private uploads, authorization-aware retrieval, persistent local storage, and orphan cleanup.
 
 ## Project documents
 
@@ -25,6 +25,7 @@ Copy .env.example to .env, choose a local PostgreSQL password, and keep .env unt
 ~~~powershell
 $env:ConnectionStrings__Database = 'Host=localhost;Port=5432;Database=northlife;Username=northlife;Password=your-local-password'
 $env:Authentication__JwtKey = 'choose-a-random-secret-with-at-least-32-bytes'
+$env:ImageStorage__RootPath = 'C:\northlife-data\images'
 ~~~
 
 Start PostgreSQL:
@@ -68,6 +69,13 @@ dotnet run --project backend/NorthLife.Api -- --bootstrap-admin
 ~~~
 
 The command is repeatable for the same administrator email and refuses to promote an existing business-owner account.
+## Image storage
+
+Set `ImageStorage__RootPath` to a persistent directory outside the web root. Uploaded files are private and must be served through `/api/images/{id}`. Remove abandoned uploads older than 24 hours with:
+
+~~~powershell
+dotnet run --project backend/NorthLife.Api -- --cleanup-images
+~~~
 
 ## Verification
 

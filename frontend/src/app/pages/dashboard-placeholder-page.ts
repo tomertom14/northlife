@@ -1,9 +1,11 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthStore } from '../auth/auth-store';
+import { EventImageUpload } from '../images/event-image-upload';
 
 @Component({
   selector: 'app-dashboard-page',
+  imports: [EventImageUpload],
   templateUrl: './dashboard-placeholder-page.html',
   styleUrl: './placeholder-page.scss',
 })
