@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnDestroy, inject, output, signal } from '@angular/core';
 import { ImageUploadApi, ImageUploadResponse } from './image-upload-api';
 
 @Component({
@@ -15,6 +15,7 @@ export class EventImageUpload implements OnDestroy {
   readonly result = signal<ImageUploadResponse | null>(null);
   readonly errorMessage = signal('');
   readonly uploading = signal(false);
+  readonly uploaded = output<ImageUploadResponse>();
 
   selectFile(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -52,6 +53,7 @@ export class EventImageUpload implements OnDestroy {
       next: (result) => {
         this.result.set(result);
         this.uploading.set(false);
+        this.uploaded.emit(result);
       },
       error: (error: HttpErrorResponse) => {
         this.uploading.set(false);

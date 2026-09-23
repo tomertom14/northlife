@@ -7,7 +7,6 @@ export type EventCategory =
   | 'Outdoors'
   | 'Workshops'
   | 'Sports'
-  | 'Family'
   | 'Nightlife'
   | 'Other';
 
@@ -58,7 +57,6 @@ export const CATEGORY_LABELS: Record<EventCategory, string> = {
   Outdoors: 'טבע וטיולים',
   Workshops: 'סדנאות',
   Sports: 'ספורט',
-  Family: 'משפחה',
   Nightlife: 'חיי לילה',
   Other: 'אחר',
 };

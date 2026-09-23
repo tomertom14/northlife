@@ -4,7 +4,7 @@ NorthLife is a Hebrew, RTL platform for discovering events and activities in nor
 
 ## Current status
 
-Phase 6 secure images: validated private uploads, authorization-aware retrieval, persistent local storage, and orphan cleanup.
+Phase 7 owner event management: authenticated, owner-scoped creation, editing, deletion, moderation status, and optimistic concurrency.
 
 ## Project documents
 
@@ -69,6 +69,11 @@ dotnet run --project backend/NorthLife.Api -- --bootstrap-admin
 ~~~
 
 The command is repeatable for the same administrator email and refuses to promote an existing business-owner account.
+
+## Owner event management
+
+Business owners sign in at `/manage/login`. The dashboard uploads an event image, creates events in `Pending` status, lists moderation status and rejection reasons, and supports revision-protected edits and deletion. Editing a published event immediately returns it to `Pending` review.
+
 ## Image storage
 
 Set `ImageStorage__RootPath` to a persistent directory outside the web root. Uploaded files are private and must be served through `/api/images/{id}`. Remove abandoned uploads older than 24 hours with:

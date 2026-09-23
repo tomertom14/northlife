@@ -1,14 +1,68 @@
-<section class="panel">
-  <p class="eyebrow">אזור מאובטח</p>
-  <h1>שלום, {{ auth.user()?.fullName }}</h1>
-  <p>{{ auth.user()?.businessName }} · {{ auth.user()?.role === 'Admin' ? 'מנהל מערכת' : 'בעל עסק' }}</p>
-  <div class="session-card">
-    <strong>ההתחברות פעילה</strong>
-    <span>האסימון נשמר בזיכרון בלבד ויימחק ברענון הדף.</span>
+<section class="dashboard-head">
+  <div>
+    <p class="eyebrow">אזור מאובטח</p>
+    <h1>שלום, {{ auth.user()?.fullName }}</h1>
+    <p>{{ auth.user()?.businessName }} · בעל עסק</p>
   </div>
-  <button type="button" (click)="logout()" [disabled]="loggingOut()">
-    {{ loggingOut() ? 'מתנתקים…' : 'התנתקות' }}
-  </button>
+  <button class="secondary" type="button" (click)="logout()" [disabled]="loggingOut()">התנתקות</button>
 </section>
 
-<app-event-image-upload />
+<section class="panel form-panel">
+  <p class="eyebrow">{{ editingId() ? 'עריכה ושליחה מחדש' : 'אירוע חדש' }}</p>
+  <h2>{{ editingId() ? 'עדכון אירוע' : 'יצירת אירוע' }}</h2>
+  <form (ngSubmit)="save()">
+    <div class="form-grid">
+      <label>כותרת<input name="title" [(ngModel)]="form.title" required maxlength="150" /></label>
+      <label>קטגוריה<select name="category" [(ngModel)]="form.category">@for (category of categories; track category) {<option [ngValue]="category">{{ categoryLabels[category] }}</option>}</select></label>
+      <label class="wide">תיאור<textarea name="description" [(ngModel)]="form.description" required maxlength="5000"></textarea></label>
+      <label>מקום<input name="venueName" [(ngModel)]="form.venueName" required /></label>
+      <label>יישוב<input name="locality" [(ngModel)]="form.locality" required /></label>
+      <label class="wide">כתובת<input name="address" [(ngModel)]="form.address" required /></label>
+      <label>קו רוחב<input type="number" step="0.000001" name="latitude" [(ngModel)]="form.latitude" required /></label>
+      <label>קו אורך<input type="number" step="0.000001" name="longitude" [(ngModel)]="form.longitude" required /></label>
+      <label>התחלה<input type="datetime-local" name="startAt" [(ngModel)]="form.startAt" required /></label>
+      <label>סיום<input type="datetime-local" name="endAt" [(ngModel)]="form.endAt" required /></label>
+      <label>מחיר ₪<input type="number" min="0" step="0.01" name="price" [(ngModel)]="form.price" required /></label>
+      <label>מארגן<input name="organizerName" [(ngModel)]="form.organizerName" required /></label>
+      <label class="wide">תגיות, מופרדות בפסיקים<input name="tags" [(ngModel)]="form.tagsText" /></label>
+      <label class="wide">מזהה תמונה<input name="imageId" [(ngModel)]="form.imageId" required placeholder="מתמלא אחרי העלאת תמונה" /></label>
+    </div>
+    @if (errorMessage()) {<p class="form-error" role="alert">{{ errorMessage() }}</p>}
+    @if (successMessage()) {<p class="form-success" role="status">{{ successMessage() }}</p>}
+    <div class="actions">
+      <button type="submit" [disabled]="saving()">{{ saving() ? 'שומרים…' : editingId() ? 'עדכון ושליחה לאישור' : 'יצירה ושליחה לאישור' }}</button>
+      @if (editingId()) {<button class="secondary" type="button" (click)="cancelEdit()">ביטול עריכה</button>}
+    </div>
+  </form>
+</section>
+
+<app-event-image-upload (uploaded)="imageUploaded($event)" />
+
+<section class="panel events-panel">
+  <p class="eyebrow">האירועים שלי</p>
+  <h2>ניהול וסטטוס</h2>
+  @if (loading()) {
+    <p>טוענים…</p>
+  } @else if (events().length === 0) {
+    <p>עוד לא יצרתם אירועים.</p>
+  } @else {
+    <div class="owner-events">
+      @for (event of events(); track event.id) {
+        <article>
+          <div>
+            <span class="status" [class]="event.status.toLowerCase()">{{ statusLabel(event.status) }}</span>
+            <h3>{{ event.title }}</h3>
+            <p>{{ event.locality }} · גרסה {{ event.revision }}</p>
+            @if (event.rejectionReason) {<p class="rejection">סיבת דחייה: {{ event.rejectionReason }}</p>}
+          </div>
+          <div class="actions">
+            <button class="secondary" type="button" (click)="edit(event)">עריכה</button>
+            <button class="danger" type="button" (click)="delete(event)">
+              {{ confirmDeleteId() === event.id ? 'אישור מחיקה' : 'מחיקה' }}
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>

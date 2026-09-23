@@ -86,6 +86,19 @@ jobs:
           test "$(curl --silent --output /dev/null --write-out "%{http_code}" http://127.0.0.1:5080/api/images/$image_id --header "Authorization: Bearer $second_token")" = "404"
           test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request POST http://127.0.0.1:5080/api/manage/images --header "Authorization: Bearer $token" --form 'file=@docs/screenshots/phase-5-dashboard.png;type=image/jpeg')" = "400"
 
+          event_start=$(date -u -d '+2 days' +%Y-%m-%dT%H:%M:%SZ)
+          event_end=$(date -u -d '+2 days 2 hours' +%Y-%m-%dT%H:%M:%SZ)
+          event_payload=$(jq -n --arg image_id "$image_id" --arg start "$event_start" --arg end "$event_end" '{title:"CI owner event",description:"Created by the owner-management smoke test",category:"Culture",venueName:"CI venue",locality:"Kiryat Shmona",address:"CI address",latitude:33.2,longitude:35.5,startAt:$start,endAt:$end,price:25,imageId:$image_id,organizerName:"CI Business",tags:["ci"]}')
+          owner_event=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/manage/events --header "Authorization: Bearer $token" --header 'Content-Type: application/json' --data "$event_payload")
+          event_id=$(echo "$owner_event" | jq -r '.id')
+          echo "$owner_event" | jq -e '.status == "Pending" and .revision == 1'
+          curl --fail --silent http://127.0.0.1:5080/api/manage/events --header "Authorization: Bearer $token" | jq -e --arg id "$event_id" 'any(.[]; .id == $id)'
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" http://127.0.0.1:5080/api/manage/events/$event_id --header "Authorization: Bearer $second_token")" = "404"
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request POST http://127.0.0.1:5080/api/manage/events --header "Authorization: Bearer $second_token" --header 'Content-Type: application/json' --data "$event_payload")" = "404"
+          stale_payload=$(echo "$event_payload" | jq '.revision = 99')
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request PUT http://127.0.0.1:5080/api/manage/events/$event_id --header "Authorization: Bearer $token" --header 'Content-Type: application/json' --data "$stale_payload")" = "409"
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request DELETE "http://127.0.0.1:5080/api/manage/events/$event_id?revision=1" --header "Authorization: Bearer $token")" = "204"
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
