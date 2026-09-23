@@ -48,6 +48,6 @@ Screenshot:
 - [x] Admin bootstrap, backup/restore, image backup, monitoring, and rollback are documented
 - [x] Both primary product journeys pass in the production container
 - [x] Backend and frontend regression tests pass
-- [ ] Main-branch CI production-image job passes
+- [x] Main-branch CI production-image job passes ([run 35878285036](https://github.com/tomertom14/northlife/actions/runs/35878285036))
 - [ ] Render staging deployment passes
 - [ ] Production deployment is promoted from verified staging
