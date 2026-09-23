@@ -4,7 +4,7 @@ NorthLife is a Hebrew, RTL platform for discovering events and activities in nor
 
 ## Current status
 
-Phase 4 public experience: responsive Hebrew event feed, shareable filters, top picks, and complete event details.
+Phase 5 authentication: business registration/login, memory-only JWT sessions, protected management routes, and administrator bootstrap.
 
 ## Project documents
 
@@ -24,6 +24,7 @@ Copy .env.example to .env, choose a local PostgreSQL password, and keep .env unt
 
 ~~~powershell
 $env:ConnectionStrings__Database = 'Host=localhost;Port=5432;Database=northlife;Username=northlife;Password=your-local-password'
+$env:Authentication__JwtKey = 'choose-a-random-secret-with-at-least-32-bytes'
 ~~~
 
 Start PostgreSQL:
@@ -52,6 +53,21 @@ npm --prefix frontend start
 ~~~
 
 Open <http://localhost:4200>. API liveness is available at /health/live; readiness checks PostgreSQL at /health/ready.
+
+## Administrator bootstrap
+
+Set the one-time administrator credentials in the current terminal, then run the explicit bootstrap command:
+
+~~~powershell
+$env:BootstrapAdmin__Email = 'admin@example.com'
+$env:BootstrapAdmin__Password = 'choose-a-strong-password'
+$env:BootstrapAdmin__FullName = 'NorthLife Admin'
+$env:BootstrapAdmin__Phone = '0500000000'
+$env:BootstrapAdmin__BusinessName = 'NorthLife'
+dotnet run --project backend/NorthLife.Api -- --bootstrap-admin
+~~~
+
+The command is repeatable for the same administrator email and refuses to promote an existing business-owner account.
 
 ## Verification
 

@@ -1,10 +1,12 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './auth/auth.guard';
 import { ManagementLayout } from './layouts/management-layout';
 import { PublicLayout } from './layouts/public-layout';
-import { DashboardPlaceholderPage } from './pages/dashboard-placeholder-page';
+import { DashboardPage } from './pages/dashboard-placeholder-page';
 import { EventDetailsPage } from './pages/event-details-page';
 import { HomePage } from './pages/home-page';
-import { LoginPlaceholderPage } from './pages/login-placeholder-page';
+import { LoginPage } from './pages/login-page';
+import { RegisterPage } from './pages/register-page';
 
 export const routes: Routes = [
   {
@@ -19,8 +21,14 @@ export const routes: Routes = [
     path: 'manage',
     component: ManagementLayout,
     children: [
-      { path: 'login', component: LoginPlaceholderPage },
-      { path: 'dashboard', component: DashboardPlaceholderPage },
+      { path: 'login', component: LoginPage, title: 'כניסה | NorthLife' },
+      { path: 'register', component: RegisterPage, title: 'הרשמה לעסקים | NorthLife' },
+      {
+        path: 'dashboard',
+        component: DashboardPage,
+        canActivate: [authGuard],
+        title: 'לוח ניהול | NorthLife',
+      },
       { path: '', pathMatch: 'full', redirectTo: 'login' },
     ],
   },

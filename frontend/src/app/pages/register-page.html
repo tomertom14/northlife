@@ -1,0 +1,51 @@
+<section class="auth-card wide">
+  <div class="auth-intro">
+    <p class="eyebrow">מצטרפים לקהילה</p>
+    <h1>הרשמה לעסקים</h1>
+    <p>פתחו חשבון בעל עסק כדי להגיש אירועים לאישור צוות NorthLife.</p>
+  </div>
+
+  <form (ngSubmit)="submit()">
+    <div class="form-grid">
+      <label>
+        שם מלא
+        <input name="fullName" [(ngModel)]="fullName" autocomplete="name" required minlength="2" maxlength="150" />
+      </label>
+      <label>
+        שם העסק
+        <input name="businessName" [(ngModel)]="businessName" autocomplete="organization" required minlength="2" maxlength="200" />
+      </label>
+      <label>
+        טלפון
+        <input name="phone" [(ngModel)]="phone" autocomplete="tel" inputmode="tel" required minlength="7" maxlength="30" />
+      </label>
+      <label>
+        אימייל
+        <input type="email" name="email" [(ngModel)]="email" autocomplete="email" inputmode="email" required maxlength="320" />
+      </label>
+    </div>
+    <label>
+      סיסמה
+      <input
+        type="password"
+        name="password"
+        [(ngModel)]="password"
+        autocomplete="new-password"
+        required
+        minlength="10"
+        maxlength="128"
+        aria-describedby="password-help" />
+      <small id="password-help">לפחות 10 תווים, אות גדולה, אות קטנה ומספר.</small>
+    </label>
+
+    @if (errorMessage()) {
+      <p class="form-error" role="alert">{{ errorMessage() }}</p>
+    }
+
+    <button type="submit" [disabled]="submitting()">
+      {{ submitting() ? 'יוצרים חשבון…' : 'יצירת חשבון' }}
+    </button>
+  </form>
+
+  <p class="alternate">כבר רשומים? <a routerLink="/manage/login">כניסה לחשבון</a></p>
+</section>

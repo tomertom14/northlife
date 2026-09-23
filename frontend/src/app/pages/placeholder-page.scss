@@ -2,9 +2,31 @@
   background: white;
   border: 1px solid var(--border);
   border-radius: 1rem;
+  box-shadow: 0 16px 45px rgba(20, 50, 39, .08);
   padding: clamp(1.5rem, 5vw, 3rem);
 }
-
-.eyebrow { color: var(--accent-dark); font-weight: 800; }
-h1 { margin-bottom: .75rem; }
-p:last-child { color: var(--muted); }
+.eyebrow { color: var(--accent-dark); font-size: .8rem; font-weight: 900; letter-spacing: .06em; }
+h1 { font-size: clamp(2rem, 5vw, 3.4rem); margin: .3rem 0 .75rem; }
+p { color: var(--muted); }
+.session-card {
+  background: #f2f7f2;
+  border: 1px solid var(--border);
+  border-radius: .8rem;
+  display: grid;
+  gap: .35rem;
+  margin: 1.5rem 0;
+  max-width: 34rem;
+  padding: 1rem;
+}
+.session-card span { color: var(--muted); font-size: .88rem; }
+button {
+  background: var(--accent);
+  border: 0;
+  border-radius: .7rem;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 850;
+  min-height: 2.8rem;
+  padding: .65rem 1.2rem;
+}
+button:disabled { opacity: .6; }

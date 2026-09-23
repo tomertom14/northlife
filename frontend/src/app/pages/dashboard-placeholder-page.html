@@ -1,4 +1,12 @@
 <section class="panel">
-  <h1>לוח ניהול</h1>
-  <p>ניהול האירועים יתווסף לאחר השלמת האימות.</p>
+  <p class="eyebrow">אזור מאובטח</p>
+  <h1>שלום, {{ auth.user()?.fullName }}</h1>
+  <p>{{ auth.user()?.businessName }} · {{ auth.user()?.role === 'Admin' ? 'מנהל מערכת' : 'בעל עסק' }}</p>
+  <div class="session-card">
+    <strong>ההתחברות פעילה</strong>
+    <span>האסימון נשמר בזיכרון בלבד ויימחק ברענון הדף.</span>
+  </div>
+  <button type="button" (click)="logout()" [disabled]="loggingOut()">
+    {{ loggingOut() ? 'מתנתקים…' : 'התנתקות' }}
+  </button>
 </section>

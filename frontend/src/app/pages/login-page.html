@@ -1,0 +1,39 @@
+<section class="auth-card">
+  <div class="auth-intro">
+    <p class="eyebrow">עסקים ומארגנים</p>
+    <h1>כניסה ל-NorthLife</h1>
+    <p>נהלו את האירועים שלכם והישארו מעודכנים בסטטוס הפרסום.</p>
+  </div>
+
+  <form (ngSubmit)="submit()">
+    <label>
+      אימייל
+      <input
+        type="email"
+        name="email"
+        [(ngModel)]="email"
+        autocomplete="email"
+        required
+        inputmode="email" />
+    </label>
+    <label>
+      סיסמה
+      <input
+        type="password"
+        name="password"
+        [(ngModel)]="password"
+        autocomplete="current-password"
+        required />
+    </label>
+
+    @if (errorMessage()) {
+      <p class="form-error" role="alert">{{ errorMessage() }}</p>
+    }
+
+    <button type="submit" [disabled]="submitting()">
+      {{ submitting() ? 'מתחברים…' : 'כניסה' }}
+    </button>
+  </form>
+
+  <p class="alternate">עוד אין לכם חשבון? <a routerLink="/manage/register">הרשמה לעסקים</a></p>
+</section>

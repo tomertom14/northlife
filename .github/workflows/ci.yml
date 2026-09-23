@@ -13,6 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ConnectionStrings__Database: Host=localhost;Port=5432;Database=northlife;Username=northlife;Password=northlife_ci_only
+      Authentication__JwtKey: northlife-ci-only-signing-key-32-bytes
+      BootstrapAdmin__Email: ci-admin@northlife.local
+      BootstrapAdmin__Password: NorthLifeCi12345
+      BootstrapAdmin__FullName: CI Admin
+      BootstrapAdmin__Phone: "0500000001"
+      BootstrapAdmin__BusinessName: NorthLife CI
     services:
       postgres:
         image: postgres:17-alpine
@@ -39,7 +45,8 @@ jobs:
       - run: dotnet tool run dotnet-ef database update --project backend/NorthLife.Api --startup-project backend/NorthLife.Api
       - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --seed-data
       - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --seed-data
-      - name: Verify public event API
+      - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --bootstrap-admin
+      - name: Verify public API and authentication
         shell: bash
         run: |
           dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --urls http://127.0.0.1:5080 > api.log 2>&1 &
@@ -49,10 +56,25 @@ jobs:
             curl --fail --silent http://127.0.0.1:5080/health/ready && break
             sleep 1
           done
+
           curl --fail --silent http://127.0.0.1:5080/api/events/today | jq -e '.totalCount >= 1 and (.items | length) >= 1'
           curl --fail --silent http://127.0.0.1:5080/api/events/top-picks | jq -e 'length >= 1'
           curl --fail --silent http://127.0.0.1:5080/api/events/019924c0-0000-7000-a000-000000000001 | jq -e '.title != null'
           test "$(curl --silent --output /dev/null --write-out "%{http_code}" http://127.0.0.1:5080/api/events/019924c0-0000-7000-a000-000000000004)" = "404"
+
+          registration=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/register --header 'Content-Type: application/json' --data '{"fullName":"CI Owner","email":"ci-owner@example.com","password":"StrongPass123","phone":"0501234567","businessName":"CI Business","role":"Admin"}')
+          echo "$registration" | jq -e '.user.role == "BusinessOwner" and (.token | length > 20)'
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request POST http://127.0.0.1:5080/api/auth/register --header 'Content-Type: application/json' --data '{"fullName":"CI Owner","email":"ci-owner@example.com","password":"StrongPass123","phone":"0501234567","businessName":"CI Business"}')" = "409"
+
+          login=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/login --header 'Content-Type: application/json' --data '{"email":"ci-owner@example.com","password":"StrongPass123"}')
+          token=$(echo "$login" | jq -r '.token')
+          echo "$login" | jq -e '.user.role == "BusinessOwner"'
+          curl --fail --silent http://127.0.0.1:5080/api/auth/session --header "Authorization: Bearer $token" | jq -e '.role == "BusinessOwner"'
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" http://127.0.0.1:5080/api/auth/session --header 'Authorization: Bearer invalid')" = "401"
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request POST http://127.0.0.1:5080/api/auth/logout --header "Authorization: Bearer $token")" = "204"
+
+          admin_login=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/login --header 'Content-Type: application/json' --data '{"email":"ci-admin@northlife.local","password":"NorthLifeCi12345"}')
+          echo "$admin_login" | jq -e '.user.role == "Admin"'
 
   frontend:
     runs-on: ubuntu-latest

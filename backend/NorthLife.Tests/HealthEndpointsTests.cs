@@ -41,5 +41,8 @@ public sealed class NorthLifeApiFactory : WebApplicationFactory<Program>
         builder.UseSetting(
             "ConnectionStrings:Database",
             "Host=127.0.0.1;Port=1;Database=northlife;Username=test;Password=test;Timeout=1;Command Timeout=1");
+        builder.UseSetting(
+            "Authentication:JwtKey",
+            "northlife-tests-only-signing-key-32-bytes");
     }
 }
