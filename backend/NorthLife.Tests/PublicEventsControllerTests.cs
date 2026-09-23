@@ -40,6 +40,17 @@ public sealed class PublicEventsControllerTests : IClassFixture<NorthLifeApiFact
         Assert.True(problem.Errors.ContainsKey("to"));
     }
 
+    [Fact]
+    public async Task Invalid_map_bounds_return_problem_details_without_querying_database()
+    {
+        var response = await _client.GetAsync("/api/events/map?south=34&north=33&west=34&east=36");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemPayload>();
+        Assert.NotNull(problem);
+        Assert.True(problem.Errors.ContainsKey("bounds"));
+    }
+
     private sealed record ValidationProblemPayload(
         string Code,
         Dictionary<string, string[]> Errors);

@@ -7,10 +7,11 @@ import { EventImageUpload } from '../images/event-image-upload';
 import { ImageUploadResponse } from '../images/image-upload-api';
 import { OwnerEvent, OwnerEventInput, OwnerEventsApi } from '../owner/owner-events-api';
 import { CATEGORY_LABELS, EVENT_CATEGORIES, EventCategory } from '../public/public-event.models';
+import { LocationPicker, SelectedCoordinates } from '../maps/location-picker';
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [FormsModule, EventImageUpload],
+  imports: [FormsModule, EventImageUpload, LocationPicker],
   templateUrl: './dashboard-placeholder-page.html',
   styleUrl: './placeholder-page.scss',
 })
@@ -37,6 +38,11 @@ export class DashboardPage implements OnInit {
 
   imageUploaded(image: ImageUploadResponse): void {
     this.form.imageId = image.id;
+  }
+
+  coordinatesSelected(coordinates: SelectedCoordinates): void {
+    this.form.latitude = Number(coordinates.latitude.toFixed(6));
+    this.form.longitude = Number(coordinates.longitude.toFixed(6));
   }
 
   edit(event: OwnerEvent): void {

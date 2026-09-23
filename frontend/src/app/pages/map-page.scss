@@ -1,0 +1,16 @@
+:host { display: block; }
+.map-hero { align-items: end; display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.map-hero h1 { font-size: clamp(2rem, 6vw, 4rem); margin: .2rem 0; }
+.map-hero p { color: var(--muted); }
+.eyebrow { color: var(--accent-dark); font-size: .8rem; font-weight: 900; }
+.map-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+button, .navigate { background: var(--accent); border: 1px solid var(--accent); border-radius: .65rem; color: white; cursor: pointer; font-weight: 800; padding: .7rem 1rem; text-decoration: none; }
+.map-host { background: #e8eee8; border: 1px solid var(--border); border-radius: 1rem; height: min(62vh, 620px); min-height: 360px; }
+.notice { background: #fff8db; border-radius: .7rem; color: #695514; padding: .8rem; }
+.map-list { margin-top: 1.5rem; }
+.map-list article { align-items: center; background: white; border: 1px solid var(--border); border-radius: .8rem; display: flex; justify-content: space-between; margin-bottom: .7rem; padding: 1rem; }
+.map-list h3, .map-list p { margin: .25rem 0; }
+.map-list p { color: var(--muted); }
+.map-list h3 a { color: inherit; }
+:host ::ng-deep .map-popup { display: grid; gap: .5rem; }
+@media (max-width: 650px) { .map-hero, .map-list article { align-items: stretch; flex-direction: column; } .map-host { min-height: 420px; } }

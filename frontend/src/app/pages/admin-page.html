@@ -19,6 +19,7 @@
         <label class="wide">כתובת<input name="adminAddress" [(ngModel)]="form.address" required /></label>
         <label>קו רוחב<input name="adminLatitude" type="number" step="any" min="-90" max="90" [(ngModel)]="form.latitude" required /></label>
         <label>קו אורך<input name="adminLongitude" type="number" step="any" min="-180" max="180" [(ngModel)]="form.longitude" required /></label>
+        <div class="wide"><app-location-picker [latitude]="form.latitude" [longitude]="form.longitude" (coordinatesSelected)="coordinatesSelected($event)" /></div>
         <label>התחלה<input name="adminStart" type="datetime-local" [(ngModel)]="form.startAt" required /></label>
         <label>סיום<input name="adminEnd" type="datetime-local" [(ngModel)]="form.endAt" required /></label>
         <label>מחיר ₪<input name="adminPrice" type="number" min="0" step="0.01" [(ngModel)]="form.price" required /></label>

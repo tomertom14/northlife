@@ -58,6 +58,13 @@ public sealed class EventsController(PublicEventQueryService queryService) : Con
                 filters.WithPeriod("today"),
                 cancellationToken));
 
+    [HttpGet("map")]
+    [ProducesResponseType<MapEventsResponse>(StatusCodes.Status200OK)]
+    public Task<ActionResult<MapEventsResponse>> GetMap(
+        [FromQuery] MapEventQueryParameters query,
+        CancellationToken cancellationToken) =>
+        Execute(() => queryService.GetMapAsync(query, cancellationToken));
+
     [HttpGet("{id:guid}")]
     [ProducesResponseType<EventDetailsResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]

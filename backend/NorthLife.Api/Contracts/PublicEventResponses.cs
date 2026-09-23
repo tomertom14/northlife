@@ -31,3 +31,18 @@ public sealed record EventDetailsResponse(
     IReadOnlyList<string> Tags,
     string ImageUrl,
     bool IsHighlighted);
+
+public sealed record MapEventResponse(
+    Guid Id,
+    string Title,
+    DateTimeOffset StartAt,
+    string VenueName,
+    string Locality,
+    string Address,
+    decimal Latitude,
+    decimal Longitude,
+    EventCategory Category);
+
+public sealed record MapEventsResponse(
+    IReadOnlyList<MapEventResponse> Items,
+    bool Truncated);

@@ -38,3 +38,29 @@ public sealed class EventFilterParameters
             PageSize = PageSize,
         };
 }
+
+public sealed class MapEventQueryParameters
+{
+    public decimal North { get; init; } = 33.4m;
+    public decimal South { get; init; } = 32.6m;
+    public decimal East { get; init; } = 36m;
+    public decimal West { get; init; } = 34.8m;
+    public string Period { get; init; } = "today";
+    public DateOnly? From { get; init; }
+    public DateOnly? To { get; init; }
+    public EventCategory? Category { get; init; }
+    public string? Locality { get; init; }
+    public decimal? MaxPrice { get; init; }
+
+    public PublicEventQueryParameters ToPublicQuery() => new()
+    {
+        Period = Period,
+        From = From,
+        To = To,
+        Category = Category,
+        Locality = Locality,
+        MaxPrice = MaxPrice,
+        Page = 1,
+        PageSize = 100,
+    };
+}

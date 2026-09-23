@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { EventDetails, EventSummary, PagedResponse, PublicEventFilters } from './public-event.models';
+import { EventDetails, EventSummary, MapBounds, MapEventsResponse, PagedResponse, PublicConfiguration, PublicEventFilters } from './public-event.models';
 
 @Injectable({ providedIn: 'root' })
 export class PublicEventsApi {
@@ -22,6 +22,17 @@ export class PublicEventsApi {
 
   getEvent(id: string) {
     return this.http.get<EventDetails>(`${this.baseUrl}/${encodeURIComponent(id)}`);
+  }
+
+  getMap(bounds: MapBounds, filters: PublicEventFilters) {
+    let params = this.toParams(filters, false)
+      .set('north', bounds.north).set('south', bounds.south)
+      .set('east', bounds.east).set('west', bounds.west);
+    return this.http.get<MapEventsResponse>(`${this.baseUrl}/map`, { params });
+  }
+
+  getPublicConfiguration() {
+    return this.http.get<PublicConfiguration>('/api/config/public');
   }
 
   private toParams(filters: PublicEventFilters, includePage: boolean): HttpParams {

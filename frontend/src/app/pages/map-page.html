@@ -1,0 +1,20 @@
+<section class="map-hero">
+  <div><p class="eyebrow">מבט גאוגרפי</p><h1>אירועים על המפה</h1><p>בחרו סמן כדי לפתוח אירוע. אירועים באותה נקודה מקובצים יחד.</p></div>
+  <div class="map-actions"><button type="button" (click)="useMyLocation()">ליד המיקום שלי</button><button type="button" (click)="searchVisibleArea()">חיפוש באזור המוצג</button></div>
+</section>
+@if (locationMessage()) { <p class="notice" role="status">{{ locationMessage() }}</p> }
+@if (truncated()) { <p class="notice" role="status">מוצגים 200 אירועים. התקרבו במפה וחפשו שוב.</p> }
+@if (mapUnavailable()) { <p class="notice" role="status">המפה החזותית אינה זמינה כרגע. הרשימה והניווט ממשיכים לעבוד.</p> }
+<div #mapHost class="map-host" role="region" aria-label="מפת אירועים"></div>
+
+<section class="map-list" aria-busy="{{ loading() }}">
+  <h2>אירועים באזור</h2>
+  @if (loading()) { <p>טוען אירועים…</p> }
+  @if (failed()) { <p role="alert">לא הצלחנו לטעון אירועים. נסו שוב.</p> }
+  @for (event of events(); track event.id) {
+    <article>
+      <div><h3><a [routerLink]="['/events', event.id]">{{ event.title }}</a></h3><p>{{ formatDate(event.startAt) }} · {{ event.venueName }}, {{ event.locality }}</p><p>{{ event.address }}</p></div>
+      <a class="navigate" [href]="navigationUrl(event)" target="_blank" rel="noopener">ניווט</a>
+    </article>
+  } @empty { @if (!loading() && !failed()) { <p>אין אירועים פעילים באזור הזה היום.</p> } }
+</section>

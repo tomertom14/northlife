@@ -9,6 +9,7 @@ import { HomePage } from './pages/home-page';
 import { LoginPage } from './pages/login-page';
 import { RegisterPage } from './pages/register-page';
 import { AdminPage } from './pages/admin-page';
+import { MapPage } from './pages/map-page';
 
 export const routes: Routes = [
   {
@@ -16,6 +17,7 @@ export const routes: Routes = [
     component: PublicLayout,
     children: [
       { path: '', component: HomePage, title: 'NorthLife | אירועים בצפון' },
+      { path: 'map', component: MapPage, title: 'מפת אירועים | NorthLife' },
       { path: 'events/:id', component: EventDetailsPage, title: 'פרטי אירוע | NorthLife' },
     ],
   },

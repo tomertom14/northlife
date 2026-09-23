@@ -4,7 +4,7 @@ NorthLife is a Hebrew, RTL platform for discovering events and activities in nor
 
 ## Current status
 
-Phase 8 administrator moderation: filtered review queue, approval, rejection reasons, direct publishing, editing, highlights, deletion, and revision conflicts.
+Phase 9 maps: bounded public event queries, grouped Google Maps markers, map-based coordinate selection, navigation links, and usable no-key/geolocation fallbacks.
 
 ## Project documents
 
@@ -26,6 +26,8 @@ Copy .env.example to .env, choose a local PostgreSQL password, and keep .env unt
 $env:ConnectionStrings__Database = 'Host=localhost;Port=5432;Database=northlife;Username=northlife;Password=your-local-password'
 $env:Authentication__JwtKey = 'choose-a-random-secret-with-at-least-32-bytes'
 $env:ImageStorage__RootPath = 'C:\northlife-data\images'
+$env:GoogleMaps__ApiKey = 'a-browser-key-restricted-to-your-hostnames'
+$env:GoogleMaps__MapId = 'your-google-map-id'
 ~~~
 
 Start PostgreSQL:

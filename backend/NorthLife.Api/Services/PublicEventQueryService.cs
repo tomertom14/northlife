@@ -156,6 +156,34 @@ public sealed class PublicEventQueryService(
                 row.IsHighlighted);
     }
 
+    public async Task<MapEventsResponse> GetMapAsync(
+        MapEventQueryParameters map,
+        CancellationToken cancellationToken)
+    {
+        ValidateBounds(map);
+        var parameters = map.ToPublicQuery();
+        Validate(parameters);
+        var now = timeProvider.GetUtcNow();
+        var query = ApplySharedFilters(
+            dbContext.Events.AsNoTracking().Where(eventItem =>
+                eventItem.Status == EventStatus.Published &&
+                eventItem.EndAtUtc > now &&
+                eventItem.Latitude >= map.South && eventItem.Latitude <= map.North &&
+                eventItem.Longitude >= map.West && eventItem.Longitude <= map.East),
+            parameters);
+        query = ApplyPeriod(query, parameters, now);
+
+        var rows = await query.OrderBy(eventItem => eventItem.StartAtUtc)
+            .ThenBy(eventItem => eventItem.Id)
+            .Take(201)
+            .Select(eventItem => new MapEventResponse(
+                eventItem.Id, eventItem.Title, eventItem.StartAtUtc,
+                eventItem.VenueName, eventItem.Locality, eventItem.Address,
+                eventItem.Latitude, eventItem.Longitude, eventItem.Category))
+            .ToListAsync(cancellationToken);
+        return new MapEventsResponse(rows.Take(200).ToList(), rows.Count > 200);
+    }
+
     private IQueryable<Event> ApplyPeriod(
         IQueryable<Event> query,
         PublicEventQueryParameters parameters,
@@ -257,6 +285,14 @@ public sealed class PublicEventQueryService(
                 "locality",
                 "Locality cannot exceed 120 characters.");
         }
+    }
+
+    private static void ValidateBounds(MapEventQueryParameters map)
+    {
+        if (map.South is < -90 or > 90 || map.North is < -90 or > 90 || map.South >= map.North)
+            throw new PublicEventQueryValidationException("bounds", "Latitude bounds are invalid.");
+        if (map.West is < -180 or > 180 || map.East is < -180 or > 180 || map.West >= map.East)
+            throw new PublicEventQueryValidationException("bounds", "Longitude bounds are invalid.");
     }
 
     private static int CalculateSkip(int page, int pageSize)

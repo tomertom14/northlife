@@ -50,6 +50,35 @@ export interface PagedResponse<T> {
   totalCount: number;
 }
 
+export interface MapEvent {
+  id: string;
+  title: string;
+  startAt: string;
+  venueName: string;
+  locality: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  category: EventCategory;
+}
+
+export interface MapEventsResponse {
+  items: MapEvent[];
+  truncated: boolean;
+}
+
+export interface MapBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
+export interface PublicConfiguration {
+  googleMapsApiKey: string;
+  googleMapsMapId: string;
+}
+
 export const CATEGORY_LABELS: Record<EventCategory, string> = {
   Music: 'מוזיקה',
   Culture: 'תרבות',
