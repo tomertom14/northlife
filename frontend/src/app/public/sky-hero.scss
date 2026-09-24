@@ -1,0 +1,161 @@
+:host {
+  display: block;
+}
+
+.sky-hero {
+  overflow: hidden;
+  padding: clamp(1.25rem, 4vw, 2.25rem) var(--gutter) clamp(6rem, 15vw, 11rem);
+  position: relative;
+  transition: background-color 600ms ease, color 600ms ease;
+}
+
+.hero-inner {
+  display: grid;
+  gap: clamp(0.75rem, 2vw, 1.25rem);
+  margin: 0 auto;
+  max-width: var(--page-max);
+  position: relative;
+  z-index: 1;
+}
+
+.periods {
+  align-items: baseline;
+  column-gap: clamp(1.1rem, 3.5vw, 2.75rem);
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 0.15rem;
+}
+
+.period {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: clamp(3.4rem, 11.5vw, 7.75rem);
+  font-weight: 300;
+  line-height: 0.9;
+  padding: 0;
+  transition: color 300ms ease;
+}
+
+.period.active {
+  font-weight: 700;
+}
+
+.period:focus-visible {
+  outline-offset: 6px;
+}
+
+.status {
+  font-size: clamp(1.05rem, 2.2vw, 1.375rem);
+  margin: 0;
+  max-width: 38rem;
+}
+
+.range {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.range label {
+  display: grid;
+  font-size: 0.875rem;
+  font-weight: 600;
+  gap: 0.3rem;
+}
+
+.range input {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(29, 35, 32, 0.35);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 1rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.range-submit {
+  background: var(--ink);
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--ground);
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 2.75rem;
+  padding: 0.5rem 1.25rem;
+}
+
+.range-error {
+  flex-basis: 100%;
+  font-weight: 600;
+  margin: 0;
+}
+
+.ridge {
+  bottom: 0;
+  display: block;
+  height: clamp(5rem, 14vw, 11.25rem);
+  left: 0;
+  position: absolute;
+  width: 100%;
+}
+
+.ridge path {
+  transition: fill 600ms ease;
+}
+
+.ridge .ground {
+  fill: var(--ground);
+}
+
+.disc {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  position: absolute;
+  transition: background-color 600ms ease, bottom 600ms ease, inset-inline-end 600ms ease;
+  width: clamp(3.5rem, 7vw, 5.5rem);
+}
+
+[data-sky='night'] .disc {
+  bottom: clamp(6rem, 13vw, 10rem);
+  inset-inline-end: 9%;
+}
+
+[data-sky='day'] .disc {
+  bottom: clamp(7rem, 16vw, 12.5rem);
+  inset-inline-end: 16%;
+}
+
+[data-sky='golden'] .disc {
+  bottom: clamp(3.5rem, 8vw, 6rem);
+  inset-inline-end: 6%;
+}
+
+[data-sky='dawn'] .disc {
+  bottom: clamp(2.5rem, 7vw, 5rem);
+  inset-inline-end: 30%;
+}
+
+[data-sky='calendar'] .disc {
+  display: none;
+}
+
+// Below this width the time words span the hero and the disc would sit on top of them.
+@media (max-width: 76rem) {
+  .disc {
+    display: none;
+  }
+}
+
+@media (max-width: 40rem) {
+
+  .range label {
+    flex: 1 1 9rem;
+  }
+
+  .range input {
+    width: 100%;
+  }
+}

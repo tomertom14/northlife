@@ -1,140 +1,70 @@
-<section class="hero">
-  <div class="hero-copy">
-    <p class="eyebrow">מה קורה בצפון?</p>
-    <h1>האירוע הבא שלכם מתחיל כאן</h1>
-    <p>הופעות, טיולים, סדנאות וחוויות מקומיות — במקום אחד, בזמן שמתאים לכם.</p>
-  </div>
+<app-sky-hero
+  [period]="filters().period"
+  [theme]="sky.theme()"
+  [status]="statusLine()"
+  [from]="filters().from"
+  [to]="filters().to"
+  (periodChange)="selectPeriod($event)"
+  (rangeApply)="applyRange($event)" />
 
-  <div class="period-tabs" role="group" aria-label="בחירת זמן">
-    @for (period of periods; track period) {
-      <button
-        type="button"
-        [class.active]="filters.period === period"
-        [attr.aria-pressed]="filters.period === period"
-        (click)="selectPeriod(period)">
-        {{ periodLabels[period] }}
-      </button>
-    }
-  </div>
-</section>
+<app-filter-bar
+  [category]="filters().category"
+  [locality]="filters().locality"
+  [maxPrice]="filters().maxPrice"
+  [hasActiveFilters]="hasActiveFilters()"
+  (categoryChange)="setCategory($event)"
+  (localityChange)="setLocality($event)"
+  (maxPriceChange)="setMaxPrice($event)"
+  (clear)="clearFilters()" />
 
-<section class="filter-shell" aria-labelledby="filters-title">
-  <form (ngSubmit)="applyFilters()">
-    <div class="filter-heading">
-      <div>
-        <p class="eyebrow">מיקוד מהיר</p>
-        <h2 id="filters-title">מה מתאים לכם?</h2>
-      </div>
-      <button class="clear-button" type="button" (click)="clearFilters()">ניקוי סינון</button>
-    </div>
-
-    <div class="filter-grid">
-      <label>
-        קטגוריה
-        <select name="category" [(ngModel)]="filters.category">
-          <option [ngValue]="undefined">כל הקטגוריות</option>
-          @for (category of categories; track category) {
-            <option [ngValue]="category">{{ categoryLabels[category] }}</option>
-          }
-        </select>
-      </label>
-
-      <label>
-        יישוב
-        <input name="locality" [(ngModel)]="filters.locality" placeholder="למשל קריית שמונה" />
-      </label>
-
-      <label>
-        מחיר מרבי
-        <select name="maxPrice" [(ngModel)]="filters.maxPrice">
-          <option [ngValue]="undefined">כל מחיר</option>
-          <option [ngValue]="0">חינם</option>
-          <option [ngValue]="50">עד 50 ₪</option>
-          <option [ngValue]="100">עד 100 ₪</option>
-          <option [ngValue]="200">עד 200 ₪</option>
-        </select>
-      </label>
-
-      @if (filters.period === 'range') {
-        <label>
-          מתאריך
-          <input type="date" name="from" [(ngModel)]="filters.from" />
-        </label>
-        <label>
-          עד תאריך
-          <input type="date" name="to" [(ngModel)]="filters.to" />
-        </label>
-      }
-
-      <button class="submit-button" type="submit">הצגת אירועים</button>
-    </div>
-
-    @if (validationMessage()) {
-      <p class="validation" role="alert">{{ validationMessage() }}</p>
-    }
-  </form>
-</section>
-
-@if (!topPicksLoading() && topPicks().length > 0) {
-  <section class="content-section top-picks" aria-labelledby="top-picks-title">
-    <div class="section-heading">
-      <div>
-        <p class="eyebrow">מומלצים</p>
-        <h2 id="top-picks-title">בחירות ששווה להכיר</h2>
-      </div>
-      <span>גללו לעוד</span>
-    </div>
-    <div class="card-rail">
-      @for (event of topPicks(); track event.id) {
-        <app-event-card [event]="event" [compact]="true" />
-      }
-    </div>
-  </section>
+@if (topPicks().length > 0) {
+  <app-picks-rail [events]="topPicks()" />
 }
 
-<section class="content-section feed" aria-labelledby="feed-title" [attr.aria-busy]="loading()">
-  <div class="section-heading">
-    <div>
-      <p class="eyebrow">כל מה שקורה</p>
-      <h2 id="feed-title">{{ periodLabels[filters.period] }}</h2>
-    </div>
-    @if (!loading() && !failed()) {
-      <span>{{ totalCount() }} אירועים</span>
+<section class="feed" aria-labelledby="feed-title" [attr.aria-busy]="loading()">
+  <div class="feed-head">
+    <h2 id="feed-title">{{ feedTitle() }}</h2>
+    @if (!loading() && !failed() && !needsRange()) {
+      <span class="count">{{ countLabel() }}</span>
     }
   </div>
 
-  @if (loading()) {
-    <div class="event-grid" aria-label="טוען אירועים">
-      @for (item of [1, 2, 3, 4, 5, 6]; track item) {
-        <div class="skeleton"><span></span><i></i><i></i><i></i></div>
-      }
+  @if (needsRange()) {
+    <div class="state">
+      <p class="state-title">בחרו תאריכים</p>
+      <p>הזינו מתאריך ועד תאריך בראש העמוד, ונציג את כל מה שמתוכנן בטווח.</p>
     </div>
+  } @else if (loading()) {
+    <app-event-timetable [loading]="true" />
   } @else if (failed()) {
-    <div class="state-card" role="alert">
-      <span class="state-icon" aria-hidden="true">↻</span>
-      <h3>לא הצלחנו לטעון את האירועים</h3>
-      <p>ייתכן שיש בעיית חיבור זמנית. אפשר לנסות שוב.</p>
-      <button type="button" (click)="reload()">ניסיון נוסף</button>
+    <div class="state" role="alert">
+      <p class="state-title">האירועים לא נטענו</p>
+      <p>השרת לא הגיב. בדקו את החיבור ונסו שוב.</p>
+      <div class="state-actions">
+        <button type="button" class="btn btn-primary" (click)="reload()">טעינה מחדש</button>
+      </div>
     </div>
   } @else if (events().length === 0) {
-    <div class="state-card">
-      <span class="state-icon" aria-hidden="true">◇</span>
-      <h3>עוד אין אירועים שמתאימים לסינון</h3>
-      <p>נסו לבחור זמן, מחיר או יישוב אחר.</p>
-      <button type="button" (click)="clearFilters()">הצגת כל אירועי היום</button>
+    <div class="state">
+      <p class="state-title">{{ emptyTitle() }}</p>
+      <p>{{ hasActiveFilters() ? 'נסו להרחיב את הסינון או לבחור זמן אחר.' : 'נסו לבחור זמן אחר.' }}</p>
+      <div class="state-actions">
+        @if (hasActiveFilters()) {
+          <button type="button" class="btn btn-primary" (click)="clearFilters()">ניקוי סינון</button>
+        }
+        @if (filters().period !== 'tomorrow') {
+          <button type="button" class="btn" (click)="selectPeriod('tomorrow')">מה יש מחר?</button>
+        }
+      </div>
     </div>
   } @else {
-    <div class="event-grid">
-      @for (event of events(); track event.id) {
-        <app-event-card [event]="event" />
-      }
-    </div>
+    <app-event-timetable [groups]="groups()" />
 
     @if (totalPages() > 1) {
       <nav class="pagination" aria-label="עמודי תוצאות">
-        <button type="button" [disabled]="filters.page === 1" (click)="goToPage(filters.page - 1)">הקודם</button>
-        <span>עמוד {{ filters.page }} מתוך {{ totalPages() }}</span>
-        <button type="button" [disabled]="filters.page === totalPages()" (click)="goToPage(filters.page + 1)">הבא</button>
+        <button type="button" class="btn" [disabled]="filters().page <= 1" (click)="goToPage(filters().page - 1)">הקודם</button>
+        <span>עמוד {{ filters().page }} מתוך {{ totalPages() }}</span>
+        <button type="button" class="btn" [disabled]="filters().page >= totalPages()" (click)="goToPage(filters().page + 1)">הבא</button>
       </nav>
     }
   }

@@ -1,137 +1,206 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, Injector, OnInit, afterNextRender, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { Observable } from 'rxjs';
+import { Router, RouterLink } from '@angular/router';
+import { Observable, forkJoin } from 'rxjs';
 import { AdminEvent, AdminEventsApi } from '../admin/admin-events-api';
 import { AuthStore } from '../auth/auth-store';
-import { EventImageUpload } from '../images/event-image-upload';
-import { ImageUploadResponse } from '../images/image-upload-api';
+import { PrivateImage } from '../images/private-image';
+import { EventForm } from '../manage/event-form';
+import { StatTile, StatTiles } from '../manage/stat-tiles';
+import { StatusBadge } from '../manage/status-badge';
 import { OwnerEventInput, OwnerEventStatus } from '../owner/owner-events-api';
-import { CATEGORY_LABELS, EVENT_CATEGORIES, EventCategory } from '../public/public-event.models';
-import { LocationPicker, SelectedCoordinates } from '../maps/location-picker';
+import { Clock } from '../shared/clock';
+import { formatLongDate, formatTime } from '../shared/jerusalem-time';
+import { problemFieldErrors } from '../shared/problem-details';
+import { ToastService } from '../shared/toast';
 
 @Component({
   selector: 'app-admin-page',
-  imports: [FormsModule, EventImageUpload, LocationPicker],
+  imports: [FormsModule, RouterLink, EventForm, StatTiles, StatusBadge, PrivateImage],
   templateUrl: './admin-page.html',
-  styleUrl: './placeholder-page.scss',
+  styleUrl: './manage-page.scss',
 })
 export class AdminPage implements OnInit {
   private readonly api = inject(AdminEventsApi);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
+  private readonly clock = inject(Clock);
+  private readonly injector = inject(Injector);
   readonly auth = inject(AuthStore);
+
   readonly events = signal<AdminEvent[]>([]);
+  readonly overview = signal<AdminEvent[]>([]);
   readonly loading = signal(true);
-  readonly errorMessage = signal('');
-  readonly successMessage = signal('');
-  readonly editingId = signal<string | null>(null);
-  readonly categories = EVENT_CATEGORIES;
-  readonly categoryLabels = CATEGORY_LABELS;
+  readonly loadFailed = signal(false);
+  readonly saving = signal(false);
+  readonly formOpen = signal(false);
+  readonly editing = signal<AdminEvent | null>(null);
+  readonly serverErrors = signal<Record<string, string>>({});
+  readonly busyId = signal<string | null>(null);
+  readonly rejectingId = signal<string | null>(null);
+  readonly confirmDeleteId = signal<string | null>(null);
+  readonly rejectError = signal('');
   status: '' | OwnerEventStatus = 'Pending';
   search = '';
-  rejectionReasons: Record<string, string> = {};
-  form = this.emptyForm();
+  rejectionReason = '';
 
-  ngOnInit(): void { this.load(); }
+  readonly tiles = computed<StatTile[]>(() => {
+    const now = this.clock.now();
+    const events = this.overview();
+    const count = (predicate: (event: AdminEvent) => boolean) => events.filter(predicate).length;
+    return [
+      { label: 'ממתינים לבדיקה', value: count((e) => e.status === 'Pending'), status: 'Pending' },
+      { label: 'מפורסמים ופעילים', value: count((e) => e.status === 'Published' && new Date(e.endAt) > now), status: 'Published' },
+      { label: 'נדחו', value: count((e) => e.status === 'Rejected'), status: 'Rejected' },
+    ];
+  });
+  readonly resultLabel = computed(() => {
+    const count = this.events().length;
+    return count === 1 ? 'אירוע אחד' : `${count} אירועים`;
+  });
+
+  ngOnInit(): void {
+    this.load();
+  }
 
   load(): void {
     this.loading.set(true);
-    this.api.list(this.status || undefined, this.search).subscribe({
-      next: events => { this.events.set(events); this.loading.set(false); },
-      error: () => { this.loading.set(false); this.errorMessage.set('טעינת תור הבדיקה נכשלה.'); },
+    this.loadFailed.set(false);
+    forkJoin({
+      queue: this.api.list(this.status || undefined, this.search),
+      overview: this.api.list(),
+    }).subscribe({
+      next: ({ queue, overview }) => {
+        this.events.set(queue);
+        this.overview.set(overview);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.loadFailed.set(true);
+      },
     });
   }
 
-  imageUploaded(image: ImageUploadResponse): void { this.form.imageId = image.id; }
-  coordinatesSelected(coordinates: SelectedCoordinates): void {
-    this.form.latitude = Number(coordinates.latitude.toFixed(6));
-    this.form.longitude = Number(coordinates.longitude.toFixed(6));
-  }
-
-  save(): void {
-    if (!this.form.imageId) { this.errorMessage.set('יש להעלות תמונה.'); return; }
-    const request = this.editingId()
-      ? this.api.update(this.editingId()!, this.toInput())
-      : this.api.create(this.toInput());
-    this.run(request, this.editingId() ? 'האירוע עודכן.' : 'האירוע פורסם.', true);
+  startCreate(): void {
+    this.openForm(null);
   }
 
   edit(event: AdminEvent): void {
-    this.editingId.set(event.id);
-    this.form = {
-      title: event.title, description: event.description, category: event.category,
-      venueName: event.venueName, locality: event.locality, address: event.address,
-      latitude: event.latitude, longitude: event.longitude,
-      startAt: this.localDateTime(event.startAt), endAt: this.localDateTime(event.endAt),
-      price: event.price, imageId: event.imageId, organizerName: event.organizerName,
-      tagsText: event.tags.join(', '), revision: event.revision,
-    };
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.openForm(event);
   }
 
-  cancelEdit(): void { this.editingId.set(null); this.form = this.emptyForm(); }
-  approve(event: AdminEvent): void { this.run(this.api.approve(event), 'האירוע אושר ופורסם.'); }
-  reject(event: AdminEvent): void {
-    const reason = this.rejectionReasons[event.id]?.trim();
-    if (!reason) { this.errorMessage.set('נדרשת סיבת דחייה.'); return; }
-    this.run(this.api.reject(event, reason), 'האירוע נדחה והסיבה זמינה לבעל העסק.');
-  }
-  highlight(event: AdminEvent): void {
-    this.run(this.api.highlight(event, !event.isHighlighted), event.isHighlighted ? 'ההדגשה הוסרה.' : 'האירוע הודגש.');
-  }
-  delete(event: AdminEvent): void { this.run(this.api.delete(event), 'האירוע נמחק.'); }
-
-  logout(): void {
-    const done = () => void this.router.navigateByUrl('/manage/login');
-    this.auth.logout().subscribe({ next: done, error: done });
+  closeForm(): void {
+    this.formOpen.set(false);
+    this.editing.set(null);
+    this.serverErrors.set({});
   }
 
-  statusLabel(status: OwnerEventStatus): string {
-    return { Pending: 'ממתין', Published: 'פורסם', Rejected: 'נדחה' }[status];
-  }
-
-  private run(request: Observable<unknown>, message: string, resetForm = false): void {
-    this.errorMessage.set('');
+  save(input: OwnerEventInput): void {
+    const editing = this.editing();
+    this.saving.set(true);
+    this.serverErrors.set({});
+    const request = editing ? this.api.update(editing.id, input) : this.api.create(input);
     request.subscribe({
       next: () => {
-        this.successMessage.set(message);
-        if (resetForm) { this.editingId.set(null); this.form = this.emptyForm(); }
+        this.saving.set(false);
+        this.toast.success(editing ? 'השינויים נשמרו.' : 'האירוע פורסם באתר.');
+        this.closeForm();
         this.load();
       },
-      error: (error: HttpErrorResponse) => this.fail(error),
+      error: (error: HttpErrorResponse) => {
+        this.saving.set(false);
+        if (error.status === 400) this.serverErrors.set(problemFieldErrors(error));
+        else this.fail(error);
+      },
+    });
+  }
+
+  approve(event: AdminEvent): void {
+    this.run(event, this.api.approve(event), 'האירוע אושר ופורסם באתר.');
+  }
+
+  startReject(event: AdminEvent): void {
+    this.rejectingId.set(event.id);
+    this.rejectionReason = '';
+    this.rejectError.set('');
+  }
+
+  reject(event: AdminEvent): void {
+    const reason = this.rejectionReason.trim();
+    if (!reason) {
+      this.rejectError.set('כתבו לבעל העסק מה צריך לתקן.');
+      return;
+    }
+    this.run(event, this.api.reject(event, reason), 'האירוע נדחה. בעל העסק יראה את הסיבה בלוח שלו.');
+  }
+
+  toggleHighlight(event: AdminEvent): void {
+    this.run(
+      event,
+      this.api.highlight(event, !event.isHighlighted),
+      event.isHighlighted ? 'האירוע הוסר מבחירות העורכים.' : 'האירוע נוסף לבחירות העורכים.',
+    );
+  }
+
+  delete(event: AdminEvent): void {
+    this.run(event, this.api.delete(event), 'האירוע נמחק.');
+  }
+
+  logout(): void {
+    const finish = () => void this.router.navigateByUrl('/manage/login');
+    this.auth.logout().subscribe({ next: finish, error: finish });
+  }
+
+  when(event: AdminEvent): string {
+    return `${formatLongDate(event.startAt)}, ${formatTime(event.startAt)}`;
+  }
+
+  hasEnded(event: AdminEvent): boolean {
+    return new Date(event.endAt) <= this.clock.now();
+  }
+
+  private run(event: AdminEvent, request: Observable<unknown>, message: string): void {
+    this.busyId.set(event.id);
+    request.subscribe({
+      next: () => {
+        this.busyId.set(null);
+        this.rejectingId.set(null);
+        this.confirmDeleteId.set(null);
+        if (this.editing()?.id === event.id) this.closeForm();
+        this.toast.success(message);
+        this.load();
+      },
+      error: (error: HttpErrorResponse) => {
+        this.busyId.set(null);
+        this.fail(error);
+      },
     });
   }
 
   private fail(error: HttpErrorResponse): void {
-    this.errorMessage.set(error.status === 409 ? 'האירוע השתנה. הרשימה נטענה מחדש.' : 'הפעולה נכשלה. בדקו את הנתונים.');
-    if (error.status === 409) this.load();
+    if (error.status === 401) return;
+    if (error.status === 409) {
+      this.toast.error('האירוע השתנה בינתיים. הרשימה רועננה, בדקו אותו שוב.');
+      this.load();
+      return;
+    }
+    const message = problemFieldErrors(error)['event'];
+    this.toast.error(
+      message === 'Event end time must be in the future.'
+        ? 'אי אפשר לאשר אירוע שכבר הסתיים.'
+        : 'הפעולה נכשלה. נסו שוב בעוד רגע.',
+    );
   }
 
-  private toInput(): OwnerEventInput {
-    return {
-      title: this.form.title, description: this.form.description, category: this.form.category,
-      venueName: this.form.venueName, locality: this.form.locality, address: this.form.address,
-      latitude: this.form.latitude, longitude: this.form.longitude,
-      startAt: new Date(this.form.startAt).toISOString(), endAt: new Date(this.form.endAt).toISOString(),
-      price: this.form.price, imageId: this.form.imageId, organizerName: this.form.organizerName,
-      tags: this.form.tagsText.split(',').map(tag => tag.trim()).filter(Boolean), revision: this.form.revision,
-    };
-  }
-
-  private emptyForm() {
-    const start = new Date(Date.now() + 86_400_000);
-    const end = new Date(start.getTime() + 7_200_000);
-    return {
-      title: '', description: '', category: 'Culture' as EventCategory, venueName: '', locality: '', address: '',
-      latitude: 33.2, longitude: 35.5, startAt: this.localDateTime(start.toISOString()),
-      endAt: this.localDateTime(end.toISOString()), price: 0, imageId: '',
-      organizerName: this.auth.user()?.businessName ?? 'NorthLife', tagsText: '', revision: undefined as number | undefined,
-    };
-  }
-
-  private localDateTime(value: string): string {
-    const date = new Date(value);
-    return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+  private openForm(event: AdminEvent | null): void {
+    this.editing.set(event);
+    this.serverErrors.set({});
+    this.formOpen.set(true);
+    afterNextRender(
+      () => document.getElementById('event-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      { injector: this.injector },
+    );
   }
 }

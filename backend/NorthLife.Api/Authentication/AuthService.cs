@@ -74,6 +74,8 @@ public sealed class AuthService(
             cancellationToken);
         if (user is null)
         {
+            // Spend the same hashing work as a real account so timing does not reveal registered emails.
+            passwordHasher.VerifyHashedPassword(TimingDummy, TimingDummyHash.Value, password);
             throw new LoginFailedException();
         }
 
@@ -97,6 +99,19 @@ public sealed class AuthService(
 
     internal static string NormalizeEmail(string email) =>
         email.Trim().ToUpperInvariant();
+
+    private static readonly AppUser TimingDummy = new()
+    {
+        FullName = string.Empty,
+        Email = string.Empty,
+        NormalizedEmail = string.Empty,
+        PasswordHash = string.Empty,
+        Phone = string.Empty,
+        BusinessName = string.Empty,
+    };
+
+    private static readonly Lazy<string> TimingDummyHash = new(() =>
+        new PasswordHasher<AppUser>().HashPassword(TimingDummy, Guid.NewGuid().ToString("N")));
 }
 
 public static class AuthInputValidator

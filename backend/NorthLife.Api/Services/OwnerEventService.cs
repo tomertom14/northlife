@@ -182,8 +182,8 @@ public static class OwnerEventInputValidator
         if (request.EndAt <= request.StartAt) errors["endAt"] = ["End time must follow start time."];
         if (requireRevision && request.Revision is null or < 1) errors["revision"] = ["A valid revision is required."];
 
-        var tags = request.Tags
-            .Select(tag => tag.Trim())
+        var tags = (request.Tags ?? [])
+            .Select(tag => tag?.Trim() ?? string.Empty)
             .Where(tag => tag.Length > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();

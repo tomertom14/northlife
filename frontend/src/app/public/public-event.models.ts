@@ -81,14 +81,44 @@ export interface PublicConfiguration {
 
 export const CATEGORY_LABELS: Record<EventCategory, string> = {
   Music: 'מוזיקה',
-  Culture: 'תרבות',
+  Nightlife: 'חיי לילה',
   Food: 'אוכל',
   Outdoors: 'טבע וטיולים',
+  Culture: 'תרבות',
   Workshops: 'סדנאות',
   Sports: 'ספורט',
-  Nightlife: 'חיי לילה',
   Other: 'אחר',
 };
+
+/** Identity colours for category marks (never for text); equal OKLCH lightness and chroma. */
+export const CATEGORY_COLORS: Record<EventCategory, string> = {
+  Music: '#835bae',
+  Nightlife: '#516cbd',
+  Food: '#ae5528',
+  Outdoors: '#2f8543',
+  Culture: '#aa4d75',
+  Workshops: '#996700',
+  Sports: '#007faa',
+  Other: '#6a746e',
+};
+
+/** Northern localities offered as suggestions; the API matches locality names exactly. */
+export const NORTHERN_LOCALITIES = [
+  'קריית שמונה',
+  'צפת',
+  'טבריה',
+  'ראש פינה',
+  'קצרין',
+  'כרמיאל',
+  'נהריה',
+  'עכו',
+  'מטולה',
+  'מעלות־תרשיחא',
+  'תל חי',
+  'עפולה',
+  'בית שאן',
+  'נצרת',
+];
 
 export const PERIOD_LABELS: Record<EventPeriod, string> = {
   now: 'עכשיו',
@@ -106,23 +136,10 @@ export function eventImage(category: EventCategory): string {
   return '/images/events/workshop.svg';
 }
 
-const dateTime = new Intl.DateTimeFormat('he-IL', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-  hour: '2-digit',
-  minute: '2-digit',
-  timeZone: 'Asia/Jerusalem',
-});
-
-export function formatEventDate(value: string): string {
-  return dateTime.format(new Date(value));
-}
+const wholeShekels = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 });
+const shekelsAndAgorot = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', minimumFractionDigits: 2 });
 
 export function formatPrice(price: number): string {
-  return price === 0 ? 'חינם' : new Intl.NumberFormat('he-IL', {
-    style: 'currency',
-    currency: 'ILS',
-    maximumFractionDigits: 0,
-  }).format(price);
+  if (price === 0) return 'חינם';
+  return (Number.isInteger(price) ? wholeShekels : shekelsAndAgorot).format(price);
 }

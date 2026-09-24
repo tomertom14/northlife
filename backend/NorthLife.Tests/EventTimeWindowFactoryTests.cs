@@ -67,6 +67,24 @@ public sealed class EventTimeWindowFactoryTests
     }
 
     [Fact]
+    public void Calendar_extremes_are_rejected_instead_of_overflowing()
+    {
+        var exception = Assert.Throws<PublicEventQueryValidationException>(
+            () => _factory.LocalDateRange(DateOnly.MinValue, DateOnly.MaxValue));
+
+        Assert.Equal("from", exception.Field);
+    }
+
+    [Fact]
+    public void Ranges_longer_than_a_year_are_rejected()
+    {
+        var exception = Assert.Throws<PublicEventQueryValidationException>(
+            () => _factory.LocalDateRange(new DateOnly(2026, 1, 1), new DateOnly(2027, 1, 3)));
+
+        Assert.Equal("to", exception.Field);
+    }
+
+    [Fact]
     public void Reversed_date_range_is_rejected()
     {
         var exception = Assert.Throws<PublicEventQueryValidationException>(

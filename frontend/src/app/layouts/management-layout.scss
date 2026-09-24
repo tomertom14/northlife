@@ -1,18 +1,58 @@
 :host {
-  background: #f3f5f0;
   display: block;
   min-height: 100dvh;
 }
 
 .management-header {
-  align-items: center;
-  background: #16372c;
-  color: white;
-  display: flex;
-  gap: 1rem;
-  justify-content: space-between;
-  padding: 1rem clamp(1rem, 4vw, 4rem);
+  background: #1b2440;
+  color: #f2f4f3;
 }
 
-.management-header a { color: white; font-weight: 700; }
-.management-main { margin: 0 auto; max-width: 72rem; padding: clamp(1.5rem, 5vw, 4rem); }
+.header-inner {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  margin: 0 auto;
+  max-width: 72rem;
+  padding: max(0.8rem, env(safe-area-inset-top)) var(--gutter) 0.8rem;
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.area {
+  color: #9aa3bf;
+  font-size: 0.9375rem;
+  margin-inline-end: auto;
+}
+
+.site-link {
+  border-bottom: 2px solid transparent;
+  font-weight: 500;
+  padding-block: 0.35rem;
+}
+
+.site-link:hover {
+  border-bottom-color: currentColor;
+}
+
+.management-main {
+  margin: 0 auto;
+  max-width: 72rem;
+  padding: clamp(1.25rem, 4vw, 3rem) var(--gutter) clamp(4rem, 10vw, 6rem);
+}
+
+@media (max-width: 30rem) {
+  .area {
+    display: none;
+  }
+
+  .wordmark {
+    margin-inline-end: auto;
+  }
+}

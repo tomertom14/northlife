@@ -1,39 +1,30 @@
-<section class="auth-card">
+<section class="auth">
   <div class="auth-intro">
-    <p class="eyebrow">עסקים ומארגנים</p>
-    <h1>כניסה ל-NorthLife</h1>
-    <p>נהלו את האירועים שלכם והישארו מעודכנים בסטטוס הפרסום.</p>
+    <h1>כניסה לעסקים</h1>
+    <p>נהלו את האירועים שלכם ועקבו אחרי סטטוס האישור.</p>
   </div>
 
-  <form (ngSubmit)="submit()">
-    <label>
-      אימייל
-      <input
-        type="email"
-        name="email"
-        [(ngModel)]="email"
-        autocomplete="email"
-        required
-        inputmode="email" />
-    </label>
-    <label>
-      סיסמה
-      <input
-        type="password"
-        name="password"
-        [(ngModel)]="password"
-        autocomplete="current-password"
-        required />
-    </label>
+  <form class="auth-form" (ngSubmit)="submit()">
+    @if (expired) {
+      <p class="notice notice-warning" role="status">פג תוקף החיבור. התחברו שוב כדי להמשיך מאותו מקום.</p>
+    }
+    <div class="field">
+      <label for="login-email">אימייל</label>
+      <input class="input" id="login-email" type="email" name="email" inputmode="email" autocomplete="email" required [(ngModel)]="email" />
+    </div>
+    <div class="field">
+      <label for="login-password">סיסמה</label>
+      <input class="input" id="login-password" type="password" name="password" autocomplete="current-password" required [(ngModel)]="password" />
+    </div>
 
     @if (errorMessage()) {
-      <p class="form-error" role="alert">{{ errorMessage() }}</p>
+      <p class="notice notice-error" role="alert">{{ errorMessage() }}</p>
     }
 
-    <button type="submit" [disabled]="submitting()">
+    <button type="submit" class="btn btn-primary" [disabled]="submitting()">
       {{ submitting() ? 'מתחברים…' : 'כניסה' }}
     </button>
   </form>
 
-  <p class="alternate">עוד אין לכם חשבון? <a routerLink="/manage/register">הרשמה לעסקים</a></p>
+  <p class="alternate">עוד אין לכם חשבון? <a routerLink="/manage/register">פתיחת חשבון עסק</a></p>
 </section>

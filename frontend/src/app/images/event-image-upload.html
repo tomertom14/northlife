@@ -1,32 +1,42 @@
-<section class="upload-card" aria-labelledby="upload-title">
-  <div>
-    <p class="eyebrow">תמונת אירוע</p>
-    <h2 id="upload-title">בדיקת העלאת תמונה</h2>
-    <p class="help">JPEG, PNG או WebP, עד 5 MB. המערכת מסירה מידע נסתר ומתאימה את התמונה אוטומטית.</p>
+<div class="uploader" [class.invalid]="invalid()">
+  <div class="preview">
+    @if (previewUrl()) {
+      <img [src]="previewUrl()" alt="התמונה שנבחרה" />
+    } @else if (currentUrl()) {
+      <img [appPrivateImage]="currentUrl()" [category]="category()" alt="התמונה הנוכחית של האירוע" />
+    } @else {
+      <div class="empty">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <circle cx="9" cy="10" r="2" />
+          <path d="M21 16l-5-5-9 9" />
+        </svg>
+        <span>עדיין לא נבחרה תמונה</span>
+      </div>
+    }
   </div>
 
-  <label class="file-field">
-    בחירת תמונה
-    <input type="file" accept="image/jpeg,image/png,image/webp" (change)="selectFile($event)" />
-  </label>
-
-  @if (previewUrl()) {
-    <img class="preview" [src]="previewUrl()" alt="תצוגה מקדימה של התמונה שנבחרה" />
-  }
-
-  @if (errorMessage()) {
-    <p class="error" role="alert">{{ errorMessage() }}</p>
-  }
-
-  @if (result(); as uploaded) {
-    <div class="success" role="status">
-      <strong>התמונה עובדה ונשמרה</strong>
-      <span>{{ uploaded.width }}×{{ uploaded.height }} · {{ uploaded.sizeBytes }} bytes</span>
-      <code>{{ uploaded.id }}</code>
-    </div>
-  }
-
-  <button type="button" [disabled]="uploading() || !previewUrl()" (click)="upload()">
-    {{ uploading() ? 'מעבדים…' : 'העלאת תמונה' }}
-  </button>
-</section>
+  <div class="controls">
+    <label class="btn file-button">
+      {{ previewUrl() || currentUrl() ? 'החלפת תמונה' : 'בחירת תמונה' }}
+      <input
+        class="visually-hidden"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        [attr.aria-invalid]="invalid() || null"
+        [attr.aria-describedby]="describedBy()"
+        [disabled]="status() === 'uploading'"
+        (change)="selectFile($event)" />
+    </label>
+    <p class="hint">JPEG, PNG או WebP, עד 5MB. מידע נסתר נמחק מהקובץ והתמונה מוקטנת אוטומטית.</p>
+    @if (status() === 'uploading') {
+      <p class="progress" role="status">מעלים ומעבדים את התמונה…</p>
+    }
+    @if (status() === 'done') {
+      <p class="done" role="status">התמונה נשמרה.</p>
+    }
+    @if (errorMessage()) {
+      <p class="field-error" role="alert">{{ errorMessage() }}</p>
+    }
+  </div>
+</div>

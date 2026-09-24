@@ -1,51 +1,52 @@
-<section class="auth-card wide">
+<section class="auth wide">
   <div class="auth-intro">
-    <p class="eyebrow">מצטרפים לקהילה</p>
-    <h1>הרשמה לעסקים</h1>
-    <p>פתחו חשבון בעל עסק כדי להגיש אירועים לאישור צוות NorthLife.</p>
+    <h1>חשבון לעסקים</h1>
+    <p>פתחו חשבון כדי להגיש אירועים. כל אירוע נבדק על ידי צוות NorthLife לפני שהוא עולה לאתר.</p>
   </div>
 
-  <form (ngSubmit)="submit()">
+  <form class="auth-form" (ngSubmit)="submit()">
     <div class="form-grid">
-      <label>
-        שם מלא
-        <input name="fullName" [(ngModel)]="fullName" autocomplete="name" required minlength="2" maxlength="150" />
-      </label>
-      <label>
-        שם העסק
-        <input name="businessName" [(ngModel)]="businessName" autocomplete="organization" required minlength="2" maxlength="200" />
-      </label>
-      <label>
-        טלפון
-        <input name="phone" [(ngModel)]="phone" autocomplete="tel" inputmode="tel" required minlength="7" maxlength="30" />
-      </label>
-      <label>
-        אימייל
-        <input type="email" name="email" [(ngModel)]="email" autocomplete="email" inputmode="email" required maxlength="320" />
-      </label>
+      <div class="field">
+        <label for="register-fullName">שם מלא</label>
+        <input class="input" id="register-fullName" name="fullName" autocomplete="name" maxlength="150" [(ngModel)]="fullName"
+          [attr.aria-invalid]="fieldErrors()['fullName'] ? true : null" [attr.aria-describedby]="errorId('fullName')" />
+        @if (fieldErrors()['fullName']) { <span class="field-error" [id]="errorId('fullName')">{{ fieldErrors()['fullName'] }}</span> }
+      </div>
+      <div class="field">
+        <label for="register-businessName">שם העסק</label>
+        <input class="input" id="register-businessName" name="businessName" autocomplete="organization" maxlength="200" [(ngModel)]="businessName"
+          [attr.aria-invalid]="fieldErrors()['businessName'] ? true : null" [attr.aria-describedby]="errorId('businessName')" />
+        @if (fieldErrors()['businessName']) { <span class="field-error" [id]="errorId('businessName')">{{ fieldErrors()['businessName'] }}</span> }
+      </div>
+      <div class="field">
+        <label for="register-phone">טלפון</label>
+        <input class="input" id="register-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="30" [(ngModel)]="phone"
+          [attr.aria-invalid]="fieldErrors()['phone'] ? true : null" [attr.aria-describedby]="errorId('phone')" />
+        @if (fieldErrors()['phone']) { <span class="field-error" [id]="errorId('phone')">{{ fieldErrors()['phone'] }}</span> }
+      </div>
+      <div class="field">
+        <label for="register-email">אימייל</label>
+        <input class="input" id="register-email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="320" [(ngModel)]="email"
+          [attr.aria-invalid]="fieldErrors()['email'] ? true : null" [attr.aria-describedby]="errorId('email')" />
+        @if (fieldErrors()['email']) { <span class="field-error" [id]="errorId('email')">{{ fieldErrors()['email'] }}</span> }
+      </div>
     </div>
-    <label>
-      סיסמה
-      <input
-        type="password"
-        name="password"
-        [(ngModel)]="password"
-        autocomplete="new-password"
-        required
-        minlength="10"
-        maxlength="128"
-        aria-describedby="password-help" />
-      <small id="password-help">לפחות 10 תווים, אות גדולה, אות קטנה ומספר.</small>
-    </label>
+    <div class="field">
+      <label for="register-password">סיסמה</label>
+      <input class="input" id="register-password" name="password" type="password" autocomplete="new-password" maxlength="128" [(ngModel)]="password"
+        aria-describedby="register-password-help" [attr.aria-invalid]="fieldErrors()['password'] ? true : null" />
+      <span class="field-hint" id="register-password-help">לפחות 10 תווים, עם אות גדולה, אות קטנה ומספר.</span>
+      @if (fieldErrors()['password']) { <span class="field-error" role="alert">{{ fieldErrors()['password'] }}</span> }
+    </div>
 
     @if (errorMessage()) {
-      <p class="form-error" role="alert">{{ errorMessage() }}</p>
+      <p class="notice notice-error" role="alert">{{ errorMessage() }}</p>
     }
 
-    <button type="submit" [disabled]="submitting()">
-      {{ submitting() ? 'יוצרים חשבון…' : 'יצירת חשבון' }}
+    <button type="submit" class="btn btn-primary" [disabled]="submitting()">
+      {{ submitting() ? 'פותחים חשבון…' : 'פתיחת חשבון' }}
     </button>
   </form>
 
-  <p class="alternate">כבר רשומים? <a routerLink="/manage/login">כניסה לחשבון</a></p>
+  <p class="alternate">כבר יש לכם חשבון? <a routerLink="/manage/login">כניסה</a></p>
 </section>

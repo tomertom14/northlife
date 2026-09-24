@@ -15,7 +15,6 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using System.Diagnostics;
-using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,18 +40,10 @@ builder.Services.AddControllers()
 builder.Services.AddOpenApi();
 
 var connectionString = builder.Configuration.GetConnectionString("Database");
-if (string.IsNullOrWhiteSpace(connectionString) &&
-    !string.IsNullOrWhiteSpace(builder.Configuration["Database:Host"]))
+var databaseUrl = builder.Configuration["Database:Url"];
+if (string.IsNullOrWhiteSpace(connectionString) && !string.IsNullOrWhiteSpace(databaseUrl))
 {
-    connectionString = new NpgsqlConnectionStringBuilder
-    {
-        Host = builder.Configuration["Database:Host"],
-        Port = builder.Configuration.GetValue("Database:Port", 5432),
-        Database = builder.Configuration["Database:Name"],
-        Username = builder.Configuration["Database:User"],
-        Password = builder.Configuration["Database:Password"],
-        SslMode = SslMode.Prefer,
-    }.ConnectionString;
+    connectionString = DatabaseUrl.ToConnectionString(databaseUrl);
 }
 if (string.IsNullOrWhiteSpace(connectionString))
 {
@@ -270,6 +261,11 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready"),
 });
+// Unknown API paths are real 404s; only browser routes fall back to the Angular shell.
+app.MapFallback("/api/{**path}", () => Results.Problem(
+    title: "Not found",
+    statusCode: StatusCodes.Status404NotFound,
+    extensions: new Dictionary<string, object?> { ["code"] = "not_found" }));
 app.MapFallbackToFile("index.html");
 
 app.Run();

@@ -51,12 +51,9 @@ public sealed class EventsController(PublicEventQueryService queryService) : Con
     [HttpGet("top-picks")]
     [ProducesResponseType<IReadOnlyList<EventSummaryResponse>>(StatusCodes.Status200OK)]
     public Task<ActionResult<IReadOnlyList<EventSummaryResponse>>> GetTopPicks(
-        [FromQuery] EventFilterParameters filters,
+        [FromQuery] PublicEventQueryParameters query,
         CancellationToken cancellationToken) =>
-        Execute(
-            () => queryService.GetTopPicksAsync(
-                filters.WithPeriod("today"),
-                cancellationToken));
+        Execute(() => queryService.GetTopPicksAsync(query, cancellationToken));
 
     [HttpGet("map")]
     [ProducesResponseType<MapEventsResponse>(StatusCodes.Status200OK)]

@@ -18,26 +18,11 @@ services:
         value: Production
       - key: Authentication__JwtKey
         generateValue: true
-      - key: Database__Host
+      # Render Postgres exposes connectionString (not host/port); the API converts the URL for Npgsql.
+      - key: Database__Url
         fromDatabase:
           name: northlife-db
-          property: host
-      - key: Database__Port
-        fromDatabase:
-          name: northlife-db
-          property: port
-      - key: Database__Name
-        fromDatabase:
-          name: northlife-db
-          property: database
-      - key: Database__User
-        fromDatabase:
-          name: northlife-db
-          property: user
-      - key: Database__Password
-        fromDatabase:
-          name: northlife-db
-          property: password
+          property: connectionString
       - key: GoogleMaps__ApiKey
         sync: false
       - key: GoogleMaps__MapId

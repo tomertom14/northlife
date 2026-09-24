@@ -53,6 +53,16 @@ public sealed class OwnerEventInputValidatorTests
         Assert.Contains("revision", exception.Errors.Keys);
     }
 
+    [Fact]
+    public void Null_tag_entries_are_ignored_instead_of_failing()
+    {
+        var normalized = OwnerEventInputValidator.Validate(
+            Request() with { Tags = ["north", null!, "  "] },
+            requireRevision: false);
+
+        Assert.Equal(["north"], normalized.Tags);
+    }
+
     private static OwnerEventUpsertRequest Request() =>
         new(
             "Event",

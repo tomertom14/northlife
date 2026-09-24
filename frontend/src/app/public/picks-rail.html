@@ -1,0 +1,16 @@
+<section class="picks" aria-labelledby="picks-title">
+  <h2 id="picks-title">בחירות העורכים</h2>
+  <ul class="rail">
+    @for (event of events(); track event.id) {
+      <li>
+        <a class="poster" [routerLink]="['/events', event.id]">
+          <img [appEventImage]="event.imageUrl" [category]="event.category" alt="" width="600" height="800" loading="lazy" />
+          <span class="poster-text">
+            <span class="poster-title">{{ event.title }}</span>
+            <span class="poster-meta">{{ when(event) }}, {{ event.locality }}</span>
+          </span>
+        </a>
+      </li>
+    }
+  </ul>
+</section>
