@@ -32,7 +32,11 @@ public sealed class AdminEventService(
                 EF.Functions.ILike(eventItem.Owner.BusinessName, pattern));
         }
 
-        var events = await query.OrderByDescending(eventItem => eventItem.UpdatedAtUtc)
+        // The pending queue is first-come first-served so older submissions never fall past the cap.
+        var ordered = status == EventStatus.Pending
+            ? query.OrderBy(eventItem => eventItem.UpdatedAtUtc)
+            : query.OrderByDescending(eventItem => eventItem.UpdatedAtUtc);
+        var events = await ordered
             .Take(200)
             .ToListAsync(cancellationToken);
         return events.Select(ToResponse).ToList();

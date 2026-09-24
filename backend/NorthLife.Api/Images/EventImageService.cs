@@ -75,19 +75,23 @@ public sealed class EventImageService(
     public async Task<int> CleanupOrphansAsync(CancellationToken cancellationToken)
     {
         var cutoff = timeProvider.GetUtcNow().AddHours(-24);
+        // Soft-deleted events still hold the foreign key, so they count as references here.
         var candidates = await dbContext.EventImages
+            .IgnoreQueryFilters()
             .Where(image =>
                 image.CreatedAtUtc <= cutoff &&
                 !image.Events.Any())
             .ToListAsync(cancellationToken);
 
+        dbContext.EventImages.RemoveRange(candidates);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Remove files only once the rows are gone, so a failed save never orphans metadata.
         foreach (var image in candidates)
         {
             await storage.DeleteAsync(image.StorageKey, cancellationToken);
         }
 
-        dbContext.EventImages.RemoveRange(candidates);
-        await dbContext.SaveChangesAsync(cancellationToken);
         return candidates.Count;
     }
 }

@@ -2,6 +2,9 @@ namespace NorthLife.Api.Services;
 
 public sealed class EventTimeWindowFactory
 {
+    public const int MaximumRangeDays = 366;
+    private static readonly DateOnly EarliestDate = new(2000, 1, 1);
+    private static readonly DateOnly LatestDate = new(2100, 12, 31);
     private static readonly TimeZoneInfo Jerusalem =
         TimeZoneInfo.FindSystemTimeZoneById("Asia/Jerusalem");
 
@@ -35,6 +38,20 @@ public sealed class EventTimeWindowFactory
             throw new PublicEventQueryValidationException(
                 "to",
                 "The end date must be on or after the start date.");
+        }
+
+        if (from < EarliestDate || to > LatestDate)
+        {
+            throw new PublicEventQueryValidationException(
+                "from",
+                $"Dates must be between {EarliestDate:yyyy-MM-dd} and {LatestDate:yyyy-MM-dd}.");
+        }
+
+        if (to.DayNumber - from.DayNumber > MaximumRangeDays)
+        {
+            throw new PublicEventQueryValidationException(
+                "to",
+                $"A date range cannot exceed {MaximumRangeDays} days.");
         }
 
         return new UtcEventWindow(
