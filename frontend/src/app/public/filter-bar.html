@@ -1,0 +1,58 @@
+<section class="filter-bar" aria-label="סינון אירועים">
+  <div class="chips" role="group" aria-label="קטגוריה">
+    <button
+      type="button"
+      class="chip"
+      [class.selected]="!category()"
+      [attr.aria-pressed]="!category()"
+      (click)="categoryChange.emit(undefined)">
+      הכול
+    </button>
+    @for (item of categories; track item) {
+      <button
+        type="button"
+        class="chip"
+        [class.selected]="category() === item"
+        [attr.aria-pressed]="category() === item"
+        (click)="categoryChange.emit(item)">
+        <span class="cat-dot" [style.--dot]="colors[item]"></span>
+        {{ labels[item] }}
+      </button>
+    }
+  </div>
+
+  <div class="fields">
+    <label class="compact">
+      <span>איפה</span>
+      <input
+        class="input"
+        type="search"
+        name="locality"
+        list="northlife-localities"
+        placeholder="כל הצפון"
+        enterkeyhint="search"
+        autocomplete="off"
+        [value]="locality() ?? ''"
+        (change)="onLocality($event)" />
+    </label>
+    <datalist id="northlife-localities">
+      @for (place of localities; track place) {
+        <option [value]="place"></option>
+      }
+    </datalist>
+
+    <label class="compact">
+      <span>מחיר</span>
+      <select class="input" name="maxPrice" (change)="onPrice($event)">
+        <option value="" [selected]="maxPrice() === undefined">כל מחיר</option>
+        @for (price of prices; track price.value) {
+          <option [value]="price.value" [selected]="maxPrice() === price.value">{{ price.label }}</option>
+        }
+      </select>
+    </label>
+
+    @if (hasActiveFilters()) {
+      <button type="button" class="btn btn-quiet clear" (click)="clear.emit()">ניקוי סינון</button>
+    }
+  </div>
+</section>

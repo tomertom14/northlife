@@ -1,0 +1,50 @@
+<section
+  class="sky-hero"
+  [attr.data-sky]="theme().name"
+  [style.background-color]="theme().background"
+  [style.color]="theme().ink">
+  <span class="disc" aria-hidden="true" [style.background-color]="theme().disc"></span>
+
+  <div class="hero-inner">
+    <h1 class="visually-hidden">מה קורה בצפון</h1>
+    <div class="periods" role="group" aria-label="מתי?">
+      @for (option of periods; track option) {
+        <button
+          type="button"
+          class="period"
+          [class.active]="option === period()"
+          [attr.aria-pressed]="option === period()"
+          [style.color]="option === period() ? theme().ink : theme().soft"
+          (click)="periodChange.emit(option)">
+          {{ labels[option] }}
+        </button>
+      }
+    </div>
+
+    @if (period() === 'range') {
+      <form class="range" (ngSubmit)="applyRange()">
+        <label>
+          מתאריך
+          <input type="date" name="from" [(ngModel)]="fromValue" [min]="today" [max]="lastSelectable" required />
+        </label>
+        <label>
+          עד תאריך
+          <input type="date" name="to" [(ngModel)]="toValue" [min]="fromValue() || today" [max]="lastSelectable" required />
+        </label>
+        <button type="submit" class="range-submit">הצגה</button>
+        @if (rangeError()) {
+          <p class="range-error" role="alert">{{ rangeError() }}</p>
+        }
+      </form>
+    }
+
+    <p class="status" aria-live="polite">{{ status() }}</p>
+  </div>
+
+  <svg class="ridge" viewBox="0 0 1280 180" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+    <path [attr.fill]="theme().ridgeFar" d="M0 70 C 60 52 130 34 210 30 C 290 26 350 48 420 72 C 480 92 540 84 600 70 C 680 52 740 66 800 82 C 860 98 930 86 1000 62 C 1060 42 1120 40 1180 58 C 1230 72 1260 76 1280 74 L 1280 180 L 0 180 Z" />
+    <path [attr.fill]="theme().snow" d="M150 40 C 180 31 240 28 270 36 C 250 44 226 40 206 48 C 190 42 170 46 150 40 Z" />
+    <path [attr.fill]="theme().ridgeNear" d="M0 128 C 80 116 150 104 240 110 C 330 116 390 136 470 132 C 560 128 620 104 700 100 C 790 96 840 122 930 126 C 1020 130 1080 108 1160 104 C 1220 101 1260 110 1280 114 L 1280 180 L 0 180 Z" />
+    <path class="ground" d="M0 160 C 160 152 300 148 460 154 C 620 160 760 166 920 160 C 1060 155 1180 152 1280 154 L 1280 180 L 0 180 Z" />
+  </svg>
+</section>

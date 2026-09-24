@@ -1,14 +1,27 @@
-<header class="site-header">
-  <a class="brand" routerLink="/" aria-label="NorthLife — דף הבית">
-    <span class="brand-mark" aria-hidden="true">N</span>
-    <span>NorthLife</span>
-  </a>
-  <nav aria-label="ניווט ראשי">
-    <a routerLink="/">אירועים</a>
-    <a routerLink="/map">מפה</a>
-    <a routerLink="/manage/login">כניסת עסקים</a>
-  </nav>
+<button type="button" class="skip-link" (click)="skipToContent(main)">דלגו לתוכן</button>
+
+<header class="site-header" [style.background-color]="sky.theme().background" [style.color]="sky.theme().ink">
+  <div class="header-inner">
+    <a class="wordmark" routerLink="/" aria-label="NorthLife, לדף הבית">NorthLife</a>
+    <span class="clock" [style.color]="sky.theme().soft">{{ clockLabel() }}</span>
+    <nav aria-label="ניווט ראשי">
+      <a routerLink="/" routerLinkActive="current" [routerLinkActiveOptions]="{ exact: true }" ariaCurrentWhenActive="page">אירועים</a>
+      <a routerLink="/map" routerLinkActive="current" ariaCurrentWhenActive="page">מפה</a>
+      <a routerLink="/manage/login">לעסקים</a>
+    </nav>
+  </div>
 </header>
-<main>
+
+@if (!sky.heroActive()) {
+  <div class="mini-sky" aria-hidden="true" [style.background-color]="sky.theme().background">
+    <svg viewBox="0 0 1280 60" preserveAspectRatio="none" focusable="false">
+      <path [attr.fill]="sky.theme().ridgeFar" d="M0 26 C 90 14 170 8 250 12 C 330 16 380 28 450 32 C 540 36 600 22 680 18 C 760 14 830 26 910 30 C 1000 34 1080 20 1160 16 C 1220 13 1260 18 1280 20 L 1280 60 L 0 60 Z" />
+      <path [attr.fill]="sky.theme().ridgeNear" d="M0 44 C 110 36 200 32 300 36 C 400 40 470 48 560 46 C 660 44 730 34 830 34 C 930 34 1000 44 1100 44 C 1180 44 1240 40 1280 38 L 1280 60 L 0 60 Z" />
+      <path class="ground" d="M0 55 C 200 51 420 49 640 53 C 860 57 1080 55 1280 51 L 1280 60 L 0 60 Z" />
+    </svg>
+  </div>
+}
+
+<main #main id="main" tabindex="-1">
   <router-outlet />
 </main>

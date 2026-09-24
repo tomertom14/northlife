@@ -19,10 +19,11 @@ export class LoginPage {
   password = '';
   readonly submitting = signal(false);
   readonly errorMessage = signal('');
+  readonly expired = this.route.snapshot.queryParamMap.get('expired') === '1';
 
   submit(): void {
     if (!this.email.trim() || !this.password) {
-      this.errorMessage.set('יש למלא אימייל וסיסמה.');
+      this.errorMessage.set('כתבו אימייל וסיסמה.');
       return;
     }
 
@@ -42,8 +43,10 @@ export class LoginPage {
         this.submitting.set(false);
         this.errorMessage.set(
           error.status === 429
-            ? 'יותר מדי ניסיונות. נסו שוב בעוד דקה.'
-            : 'האימייל או הסיסמה אינם נכונים.',
+            ? 'היו יותר מדי ניסיונות. נסו שוב בעוד דקה.'
+            : error.status === 401
+              ? 'האימייל או הסיסמה לא נכונים.'
+              : 'לא הצלחנו להתחבר כרגע. בדקו את החיבור ונסו שוב.',
         );
       },
     });

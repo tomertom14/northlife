@@ -1,63 +1,137 @@
-<section>
-  <header class="dashboard-head">
-    <div><p class="eyebrow">ניהול מערכת</p><h1>מרכז הבקרה</h1><p>{{ auth.user()?.fullName }}</p></div>
-    <button class="secondary" type="button" (click)="logout()">התנתקות</button>
+<div class="manage-page">
+  <header class="page-head">
+    <div>
+      <h1>מרכז הבקרה</h1>
+      <p class="lead">{{ auth.user()?.fullName }}</p>
+    </div>
+    <div class="head-actions">
+      <button type="button" class="btn btn-primary" (click)="startCreate()">פרסום אירוע</button>
+      <button type="button" class="btn btn-quiet" (click)="logout()">התנתקות</button>
+    </div>
   </header>
 
-  @if (errorMessage()) { <p class="form-error" role="alert">{{ errorMessage() }}</p> }
-  @if (successMessage()) { <p class="form-success" role="status">{{ successMessage() }}</p> }
+  <app-stat-tiles [tiles]="tiles()" label="מצב האירועים במערכת" />
 
-  <section class="panel">
-    <h2>{{ editingId() ? 'עריכת אירוע' : 'יצירה ופרסום ישיר' }}</h2>
-    <form (ngSubmit)="save()">
-      <div class="form-grid">
-        <label>כותרת<input name="adminTitle" [(ngModel)]="form.title" required maxlength="150" /></label>
-        <label>קטגוריה<select name="adminCategory" [(ngModel)]="form.category">@for (category of categories; track category) { <option [value]="category">{{ categoryLabels[category] }}</option> }</select></label>
-        <label class="wide">תיאור<textarea name="adminDescription" [(ngModel)]="form.description" required maxlength="5000"></textarea></label>
-        <label>מקום<input name="adminVenue" [(ngModel)]="form.venueName" required /></label>
-        <label>יישוב<input name="adminLocality" [(ngModel)]="form.locality" required /></label>
-        <label class="wide">כתובת<input name="adminAddress" [(ngModel)]="form.address" required /></label>
-        <label>קו רוחב<input name="adminLatitude" type="number" step="any" min="-90" max="90" [(ngModel)]="form.latitude" required /></label>
-        <label>קו אורך<input name="adminLongitude" type="number" step="any" min="-180" max="180" [(ngModel)]="form.longitude" required /></label>
-        <div class="wide"><app-location-picker [latitude]="form.latitude" [longitude]="form.longitude" (coordinatesSelected)="coordinatesSelected($event)" /></div>
-        <label>התחלה<input name="adminStart" type="datetime-local" [(ngModel)]="form.startAt" required /></label>
-        <label>סיום<input name="adminEnd" type="datetime-local" [(ngModel)]="form.endAt" required /></label>
-        <label>מחיר ₪<input name="adminPrice" type="number" min="0" step="0.01" [(ngModel)]="form.price" required /></label>
-        <label>מארגן<input name="adminOrganizer" [(ngModel)]="form.organizerName" required /></label>
-        <label class="wide">תגיות<input name="adminTags" [(ngModel)]="form.tagsText" /></label>
-        <label class="wide">מזהה תמונה<input name="adminImageId" [(ngModel)]="form.imageId" required readonly /></label>
-      </div>
-      <div class="actions">
-        <button type="submit">{{ editingId() ? 'שמירת שינוי' : 'פרסום אירוע' }}</button>
-        @if (editingId()) { <button class="secondary" type="button" (click)="cancelEdit()">ביטול</button> }
-      </div>
-    </form>
-    <app-event-image-upload (uploaded)="imageUploaded($event)" />
-  </section>
+  <div id="event-form-anchor" class="form-anchor">
+    @if (formOpen()) {
+      <app-event-form
+        mode="admin"
+        [event]="editing()"
+        [saving]="saving()"
+        [serverErrors]="serverErrors()"
+        defaultOrganizer="NorthLife"
+        (save)="save($event)"
+        (cancel)="closeForm()" />
+    }
+  </div>
 
-  <section class="panel events-panel">
-    <h2>תור בדיקה</h2>
-    <form class="filters" (ngSubmit)="load()">
-      <label>סטטוס<select name="status" [(ngModel)]="status"><option value="">הכול</option><option value="Pending">ממתין</option><option value="Published">פורסם</option><option value="Rejected">נדחה</option></select></label>
-      <label>חיפוש<input name="search" [(ngModel)]="search" maxlength="100" /></label>
-      <button class="secondary" type="submit">סינון</button>
-    </form>
-    @if (loading()) { <p>טוען…</p> }
-    <div class="owner-events">
-      @for (event of events(); track event.id) {
-        <article>
-          <div><span class="status {{ event.status.toLowerCase() }}">{{ statusLabel(event.status) }}</span><h3>{{ event.title }}</h3><p>{{ event.ownerBusinessName }} · {{ event.locality }} · גרסה {{ event.revision }}</p></div>
-          <div>
-            @if (event.status === 'Pending') { <label>סיבת דחייה<input [name]="'reason-' + event.id" [(ngModel)]="rejectionReasons[event.id]" maxlength="1000" /></label> }
-            <div class="actions">
-              @if (event.status === 'Pending') { <button type="button" (click)="approve(event)">אישור</button><button class="danger" type="button" (click)="reject(event)">דחייה</button> }
-              @if (event.status === 'Published') { <button class="secondary" type="button" (click)="highlight(event)">{{ event.isHighlighted ? 'הסרת הדגשה' : 'הדגשה' }}</button> }
-              <button class="secondary" type="button" (click)="edit(event)">עריכה</button>
-              <button class="danger" type="button" (click)="delete(event)">מחיקה</button>
-            </div>
-          </div>
-        </article>
-      } @empty { @if (!loading()) { <p>אין אירועים במסנן הזה.</p> } }
+  <section class="list-section" aria-labelledby="queue-title">
+    <div class="list-head">
+      <div>
+        <h2 id="queue-title">תור הבדיקה</h2>
+        @if (!loading() && !loadFailed()) {
+          <p class="muted">{{ resultLabel() }}</p>
+        }
+      </div>
+      <form class="filters" (ngSubmit)="load()">
+        <div class="field">
+          <label for="queue-status">סטטוס</label>
+          <select class="input" id="queue-status" name="status" [(ngModel)]="status" (ngModelChange)="load()">
+            <option value="">הכול</option>
+            <option value="Pending">ממתינים לאישור</option>
+            <option value="Published">פורסמו</option>
+            <option value="Rejected">נדחו</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="queue-search">חיפוש</label>
+          <input class="input" id="queue-search" name="search" type="search" maxlength="100" placeholder="כותרת, יישוב או עסק" [(ngModel)]="search" />
+        </div>
+        <button type="submit" class="btn">חיפוש</button>
+      </form>
     </div>
+
+    @if (loading()) {
+      <p class="muted" role="status">טוענים את התור…</p>
+    } @else if (loadFailed()) {
+      <div class="empty">
+        <p class="notice notice-error" role="alert">התור לא נטען. בדקו את החיבור ונסו שוב.</p>
+        <button type="button" class="btn" (click)="load()">טעינה מחדש</button>
+      </div>
+    } @else if (events().length === 0) {
+      <div class="empty">
+        <p class="empty-title">{{ status === 'Pending' ? 'אין אירועים שממתינים לבדיקה' : 'אין אירועים שמתאימים לסינון' }}</p>
+        <p class="muted">אירועים חדשים מבעלי עסקים יופיעו כאן.</p>
+      </div>
+    } @else {
+      <ul class="items">
+        @for (event of events(); track event.id) {
+          <li class="item">
+            <img class="thumb" [appPrivateImage]="event.imageUrl" [category]="event.category" alt="" width="160" height="100" />
+            <div class="item-main">
+              <div class="badges">
+                <app-status-badge [status]="event.status" />
+                @if (event.isHighlighted) {
+                  <span class="highlight-tag">בחירת העורכים</span>
+                }
+              </div>
+              <h3>{{ event.title }}</h3>
+              <p class="meta">{{ event.ownerBusinessName }}, {{ event.locality }}</p>
+              <p class="meta">
+                {{ when(event) }}
+                @if (hasEnded(event)) {
+                  <span class="ended">, האירוע הסתיים</span>
+                }
+              </p>
+              @if (event.rejectionReason) {
+                <p class="reason"><strong>סיבת הדחייה:</strong> {{ event.rejectionReason }}</p>
+              }
+            </div>
+            <div class="item-actions">
+              @if (event.status === 'Pending') {
+                <button type="button" class="btn btn-primary" [disabled]="busyId() === event.id" (click)="approve(event)">אישור ופרסום</button>
+                <button type="button" class="btn btn-danger" [disabled]="busyId() === event.id" (click)="startReject(event)">דחייה</button>
+              }
+              @if (event.status === 'Published' && !hasEnded(event)) {
+                <button type="button" class="btn" [disabled]="busyId() === event.id" (click)="toggleHighlight(event)">
+                  {{ event.isHighlighted ? 'הסרה מהבחירות' : 'לבחירות העורכים' }}
+                </button>
+                <a class="btn" [routerLink]="['/events', event.id]">צפייה באתר</a>
+              }
+              <button type="button" class="btn" (click)="edit(event)">עריכה</button>
+              @if (confirmDeleteId() === event.id) {
+                <button type="button" class="btn btn-danger" [disabled]="busyId() === event.id" (click)="delete(event)">כן, למחוק</button>
+                <button type="button" class="btn btn-quiet" (click)="confirmDeleteId.set(null)">ביטול</button>
+              } @else {
+                <button type="button" class="btn btn-danger" (click)="confirmDeleteId.set(event.id)">מחיקה</button>
+              }
+            </div>
+
+            @if (rejectingId() === event.id) {
+              <div class="reject-box">
+                <label class="field" [for]="'reason-' + event.id">
+                  מה צריך לתקן? בעל העסק יראה את ההסבר הזה
+                </label>
+                <textarea
+                  class="input"
+                  rows="3"
+                  maxlength="1000"
+                  [id]="'reason-' + event.id"
+                  [name]="'reason-' + event.id"
+                  [(ngModel)]="rejectionReason"
+                  [attr.aria-invalid]="rejectError() ? true : null"></textarea>
+                @if (rejectError()) {
+                  <span class="field-error" role="alert">{{ rejectError() }}</span>
+                }
+                <div class="row-actions">
+                  <button type="button" class="btn btn-danger" [disabled]="busyId() === event.id" (click)="reject(event)">שליחת הדחייה</button>
+                  <button type="button" class="btn btn-quiet" (click)="rejectingId.set(null)">ביטול</button>
+                </div>
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    }
   </section>
-</section>
+</div>

@@ -1,0 +1,117 @@
+:host {
+  border-bottom: 1px solid var(--line);
+  display: block;
+}
+
+.filter-bar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin: 0 auto;
+  max-width: var(--page-max);
+  padding: 1rem var(--gutter);
+}
+
+.chips {
+  display: flex;
+  flex: 1 1 30rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0 0.95rem;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  border-color: var(--ink);
+}
+
+.chip.selected {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--ground);
+}
+
+.fields {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.compact {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 0.875rem;
+  font-weight: 500;
+  gap: 0.5rem;
+}
+
+.compact .input {
+  min-height: 2.5rem;
+  width: 9.5rem;
+}
+
+@media (max-width: 40rem) {
+  .filter-bar {
+    padding-inline: 0;
+  }
+
+  // Phones scroll the chips sideways; the fade at the far edge shows there is more.
+  .chips {
+    flex-basis: 100%;
+    flex-wrap: nowrap;
+    margin-block: -0.25rem;
+    mask-image: linear-gradient(to right, transparent, #000 2.5rem);
+    overflow-x: auto;
+    padding-block: 0.25rem;
+    padding-inline: var(--gutter);
+    scroll-padding-inline: var(--gutter);
+    scrollbar-width: none;
+  }
+
+  .fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-inline: var(--gutter);
+    width: 100%;
+  }
+
+  .compact {
+    align-items: stretch;
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .compact .input {
+    width: 100%;
+  }
+
+  .clear {
+    grid-column: 1 / -1;
+    justify-self: start;
+    min-height: 2.25rem;
+    padding-inline: 0;
+  }
+}

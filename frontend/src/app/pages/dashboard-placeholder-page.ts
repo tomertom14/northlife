@@ -1,145 +1,123 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Component, Injector, OnInit, afterNextRender, computed, inject, signal } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 import { AuthStore } from '../auth/auth-store';
-import { EventImageUpload } from '../images/event-image-upload';
-import { ImageUploadResponse } from '../images/image-upload-api';
+import { PrivateImage } from '../images/private-image';
+import { EventForm } from '../manage/event-form';
+import { StatTile, StatTiles } from '../manage/stat-tiles';
+import { StatusBadge } from '../manage/status-badge';
 import { OwnerEvent, OwnerEventInput, OwnerEventsApi } from '../owner/owner-events-api';
-import { CATEGORY_LABELS, EVENT_CATEGORIES, EventCategory } from '../public/public-event.models';
-import { LocationPicker, SelectedCoordinates } from '../maps/location-picker';
+import { Clock } from '../shared/clock';
+import { formatLongDate, formatTime } from '../shared/jerusalem-time';
+import { problemFieldErrors } from '../shared/problem-details';
+import { ToastService } from '../shared/toast';
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [FormsModule, EventImageUpload, LocationPicker],
+  imports: [RouterLink, EventForm, StatTiles, StatusBadge, PrivateImage],
   templateUrl: './dashboard-placeholder-page.html',
-  styleUrl: './placeholder-page.scss',
+  styleUrl: './manage-page.scss',
 })
 export class DashboardPage implements OnInit {
   private readonly router = inject(Router);
   private readonly api = inject(OwnerEventsApi);
+  private readonly toast = inject(ToastService);
+  private readonly clock = inject(Clock);
+  private readonly injector = inject(Injector);
   readonly auth = inject(AuthStore);
-  readonly categories = EVENT_CATEGORIES;
-  readonly categoryLabels = CATEGORY_LABELS;
+
   readonly events = signal<OwnerEvent[]>([]);
   readonly loading = signal(true);
+  readonly loadFailed = signal(false);
   readonly saving = signal(false);
-  readonly errorMessage = signal('');
-  readonly successMessage = signal('');
-  readonly editingId = signal<string | null>(null);
+  readonly formOpen = signal(false);
+  readonly editing = signal<OwnerEvent | null>(null);
+  readonly serverErrors = signal<Record<string, string>>({});
   readonly confirmDeleteId = signal<string | null>(null);
+  readonly deletingId = signal<string | null>(null);
   readonly loggingOut = signal(false);
 
-  form = this.emptyForm();
+  readonly firstName = computed(() => (this.auth.user()?.fullName ?? '').trim().split(/\s+/)[0]);
+  readonly tiles = computed<StatTile[]>(() => {
+    const now = this.clock.now();
+    const events = this.events();
+    const count = (predicate: (event: OwnerEvent) => boolean) => events.filter(predicate).length;
+    return [
+      { label: 'פעילים באתר', value: count((e) => e.status === 'Published' && new Date(e.endAt) > now), status: 'Published' },
+      { label: 'ממתינים לאישור', value: count((e) => e.status === 'Pending'), status: 'Pending' },
+      { label: 'נדחו', value: count((e) => e.status === 'Rejected'), status: 'Rejected' },
+    ];
+  });
 
   ngOnInit(): void {
     this.load();
   }
 
-  imageUploaded(image: ImageUploadResponse): void {
-    this.form.imageId = image.id;
-  }
-
-  coordinatesSelected(coordinates: SelectedCoordinates): void {
-    this.form.latitude = Number(coordinates.latitude.toFixed(6));
-    this.form.longitude = Number(coordinates.longitude.toFixed(6));
+  startCreate(): void {
+    this.openForm(null);
   }
 
   edit(event: OwnerEvent): void {
-    this.editingId.set(event.id);
-    this.form = {
-      title: event.title,
-      description: event.description,
-      category: event.category,
-      venueName: event.venueName,
-      locality: event.locality,
-      address: event.address,
-      latitude: event.latitude,
-      longitude: event.longitude,
-      startAt: this.localDateTime(event.startAt),
-      endAt: this.localDateTime(event.endAt),
-      price: event.price,
-      imageId: event.imageId,
-      organizerName: event.organizerName,
-      tagsText: event.tags.join(', '),
-      revision: event.revision,
-    };
-    this.successMessage.set('');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.openForm(event);
   }
 
-  cancelEdit(): void {
-    this.editingId.set(null);
-    this.form = this.emptyForm();
-    this.errorMessage.set('');
+  closeForm(): void {
+    this.formOpen.set(false);
+    this.editing.set(null);
+    this.serverErrors.set({});
   }
 
-  save(): void {
-    if (!this.form.imageId) {
-      this.errorMessage.set('יש להעלות תמונה לפני שמירת האירוע.');
-      return;
-    }
-
-    const input: OwnerEventInput = {
-      title: this.form.title,
-      description: this.form.description,
-      category: this.form.category,
-      venueName: this.form.venueName,
-      locality: this.form.locality,
-      address: this.form.address,
-      latitude: this.form.latitude,
-      longitude: this.form.longitude,
-      startAt: new Date(this.form.startAt).toISOString(),
-      endAt: new Date(this.form.endAt).toISOString(),
-      price: this.form.price,
-      imageId: this.form.imageId,
-      organizerName: this.form.organizerName,
-      tags: this.form.tagsText.split(',').map(tag => tag.trim()).filter(Boolean),
-      revision: this.form.revision,
-    };
-    const request = this.editingId()
-      ? this.api.update(this.editingId()!, input)
-      : this.api.create(input);
-
+  save(input: OwnerEventInput): void {
+    const editing = this.editing();
     this.saving.set(true);
-    this.errorMessage.set('');
+    this.serverErrors.set({});
+    const request = editing ? this.api.update(editing.id, input) : this.api.create(input);
     request.subscribe({
       next: () => {
         this.saving.set(false);
-        this.successMessage.set(this.editingId()
-          ? 'האירוע עודכן ונשלח מחדש לאישור.'
-          : 'האירוע נוצר ונשלח לאישור.');
-        this.editingId.set(null);
-        this.form = this.emptyForm();
+        this.toast.success(
+          !editing
+            ? 'האירוע נשלח לאישור. הסטטוס יתעדכן כאן.'
+            : editing.status === 'Published'
+              ? 'השינויים נשמרו. האירוע חזר לבדיקה עד לאישור.'
+              : 'השינויים נשמרו ונשלחו לאישור.',
+        );
+        this.closeForm();
         this.load();
       },
       error: (error: HttpErrorResponse) => {
         this.saving.set(false);
-        this.errorMessage.set(error.status === 409
-          ? 'האירוע השתנה. טענו מחדש לפני שמירה.'
-          : error.status === 404
-            ? 'התמונה או האירוע אינם שייכים לחשבון הזה.'
-            : 'לא הצלחנו לשמור. בדקו שכל השדות תקינים ושעת הסיום בעתיד.');
+        if (error.status === 400) this.serverErrors.set(problemFieldErrors(error));
+        else if (error.status === 409) {
+          this.toast.error('האירוע השתנה בינתיים. הרשימה רועננה, פתחו אותו שוב לעריכה.');
+          this.closeForm();
+          this.load();
+        } else if (error.status === 404) this.toast.error('האירוע או התמונה לא נמצאו בחשבון שלכם.');
+        else if (error.status !== 401) this.toast.error('השמירה נכשלה. נסו שוב בעוד רגע.');
       },
     });
   }
 
-  delete(event: OwnerEvent): void {
-    if (this.confirmDeleteId() !== event.id) {
-      this.confirmDeleteId.set(event.id);
-      return;
-    }
+  askDelete(event: OwnerEvent): void {
+    this.confirmDeleteId.set(event.id);
+  }
 
+  delete(event: OwnerEvent): void {
+    this.deletingId.set(event.id);
     this.api.delete(event.id, event.revision).subscribe({
       next: () => {
+        this.deletingId.set(null);
         this.confirmDeleteId.set(null);
-        this.successMessage.set('האירוע נמחק.');
+        if (this.editing()?.id === event.id) this.closeForm();
+        this.toast.success('האירוע נמחק.');
         this.load();
       },
       error: (error: HttpErrorResponse) => {
-        this.errorMessage.set(error.status === 409
-          ? 'האירוע השתנה. טענו מחדש.'
-          : 'לא הצלחנו למחוק את האירוע.');
+        this.deletingId.set(null);
+        if (error.status === 409) {
+          this.toast.error('האירוע השתנה בינתיים. הרשימה רועננה, נסו שוב.');
+          this.load();
+        } else if (error.status !== 401) this.toast.error('המחיקה נכשלה. נסו שוב.');
       },
     });
   }
@@ -150,49 +128,36 @@ export class DashboardPage implements OnInit {
     this.auth.logout().subscribe({ next: finish, error: finish });
   }
 
-  statusLabel(status: OwnerEvent['status']): string {
-    return { Pending: 'ממתין לאישור', Published: 'פורסם', Rejected: 'נדחה' }[status];
+  when(event: OwnerEvent): string {
+    return `${formatLongDate(event.startAt)}, ${formatTime(event.startAt)}`;
   }
 
-  private load(): void {
+  hasEnded(event: OwnerEvent): boolean {
+    return new Date(event.endAt) <= this.clock.now();
+  }
+
+  load(): void {
     this.loading.set(true);
+    this.loadFailed.set(false);
     this.api.list().subscribe({
-      next: events => {
+      next: (events) => {
         this.events.set(events);
         this.loading.set(false);
       },
       error: () => {
         this.loading.set(false);
-        this.errorMessage.set('לא הצלחנו לטעון את האירועים.');
+        this.loadFailed.set(true);
       },
     });
   }
 
-  private emptyForm() {
-    const start = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
-    return {
-      title: '',
-      description: '',
-      category: 'Culture' as EventCategory,
-      venueName: '',
-      locality: '',
-      address: '',
-      latitude: 33.2,
-      longitude: 35.5,
-      startAt: this.localDateTime(start.toISOString()),
-      endAt: this.localDateTime(end.toISOString()),
-      price: 0,
-      imageId: '',
-      organizerName: this.auth.user()?.businessName ?? '',
-      tagsText: '',
-      revision: undefined as number | undefined,
-    };
-  }
-
-  private localDateTime(value: string): string {
-    const date = new Date(value);
-    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-    return local.toISOString().slice(0, 16);
+  private openForm(event: OwnerEvent | null): void {
+    this.editing.set(event);
+    this.serverErrors.set({});
+    this.formOpen.set(true);
+    afterNextRender(
+      () => document.getElementById('event-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      { injector: this.injector },
+    );
   }
 }

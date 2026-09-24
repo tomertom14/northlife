@@ -1,8 +1,11 @@
 <header class="management-header">
-  <a class="brand" routerLink="/">NorthLife</a>
-  <span>אזור ניהול</span>
-  <a routerLink="/">חזרה לאירועים</a>
+  <div class="header-inner">
+    <a class="wordmark" routerLink="/" aria-label="NorthLife, לאתר האירועים">NorthLife</a>
+    <span class="area">לעסקים ולמארגנים</span>
+    <a class="site-link" routerLink="/">לאתר האירועים</a>
+  </div>
 </header>
 <main class="management-main">
   <router-outlet />
 </main>
+<app-toast />

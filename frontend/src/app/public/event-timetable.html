@@ -1,0 +1,43 @@
+@if (loading()) {
+  <div class="skeleton" aria-hidden="true">
+    @for (item of placeholders; track item) {
+      <div class="row">
+        <i class="sk-time"></i>
+        <i class="sk-thumb"></i>
+        <span class="sk-text"><i></i><i></i></span>
+      </div>
+    }
+  </div>
+} @else {
+  @for (group of groups(); track group.key) {
+    @if (group.label) {
+      <h3 class="day">{{ group.label }}</h3>
+    }
+    <ol class="rows">
+      @for (row of group.rows; track row.event.id) {
+        <li>
+          <a class="row" [class.live]="row.state === 'live'" [class.soon]="row.state === 'soon'" [routerLink]="['/events', row.event.id]">
+            <span class="time">
+              <span class="time-line" [class.visually-hidden]="!row.showTime">
+                @if (row.state === 'live') {
+                  <span class="live-dot" aria-hidden="true"></span>
+                }
+                {{ row.time }}
+              </span>
+              @if (row.note) {
+                <span class="note">{{ row.note }}</span>
+              }
+            </span>
+            <img class="thumb" [appEventImage]="row.event.imageUrl" [category]="row.event.category" alt="" width="272" height="192" loading="lazy" />
+            <span class="text">
+              <span class="title">{{ row.event.title }}</span>
+              <span class="place">{{ row.event.venueName }}, {{ row.event.locality }}</span>
+              <span class="cat"><span class="cat-dot" [style.--dot]="colors[row.event.category]"></span>{{ labels[row.event.category] }}</span>
+            </span>
+            <span class="price">{{ price(row.event.price) }}</span>
+          </a>
+        </li>
+      }
+    </ol>
+  }
+}

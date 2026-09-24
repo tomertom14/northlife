@@ -1,23 +1,231 @@
+// NorthLife "Live Sky" tokens. The sky palettes themselves live in app/public/sky.ts
+// because they change at runtime with the selected time.
 :root {
   color-scheme: light;
-  --accent: #2e6f59;
-  --accent-dark: #1f5141;
-  --background: #fafcf8;
-  --border: #dce5dd;
-  --foreground: #15251f;
-  --muted: #5f6f68;
-  font-family: Arial, "Noto Sans Hebrew", sans-serif;
+  --ground: #f2f4f3;
+  --surface: #ffffff;
+  --ink: #1d2320;
+  --muted: #56605b;
+  --line: #d9dedb;
+  --line-strong: #c9d1cc;
+  --anemone: #c8283a;
+  --danger: #a3202d;
+  --success: #1f6b3a;
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-critical: #d03b3b;
+  --font-sans: 'IBM Plex Sans Hebrew', 'Segoe UI', Tahoma, Arial, sans-serif;
+  --font-display: Karantina, 'Arial Narrow', 'IBM Plex Sans Hebrew', sans-serif;
+  --gutter: clamp(1rem, 4vw, 4rem);
+  --page-max: 80rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --shadow-pop: 0 18px 40px rgba(29, 35, 32, 0.12);
+  font-family: var(--font-sans);
 }
 
-* { box-sizing: border-box; }
-html { background: var(--background); color: var(--foreground); }
-body { margin: 0; min-width: 320px; }
-button, input, textarea, select { font: inherit; }
-a { color: inherit; text-decoration: none; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
-a:focus-visible,
-button:focus-visible,
-input:focus-visible {
-  outline: 3px solid #d69d37;
+html {
+  background: var(--ground);
+  color: var(--ink);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+}
+
+:focus-visible {
+  outline: 3px solid currentColor;
   outline-offset: 3px;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+// Buttons shared by public and management screens.
+.btn {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  font-weight: 600;
+  gap: 0.5rem;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.55rem 1.1rem;
+  text-align: center;
+}
+
+.btn:hover {
+  border-color: var(--ink);
+}
+
+.btn-primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--ground);
+}
+
+.btn-primary:hover {
+  background: #000;
+}
+
+.btn-danger {
+  border-color: #e0b3b8;
+  color: var(--danger);
+}
+
+.btn-danger:hover {
+  border-color: var(--danger);
+}
+
+.btn-quiet {
+  background: transparent;
+  border-color: transparent;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.btn-quiet:hover {
+  border-color: transparent;
+}
+
+.btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+// Form fields.
+.field {
+  display: grid;
+  font-size: 0.875rem;
+  font-weight: 600;
+  gap: 0.35rem;
+}
+
+.input {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 400;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  width: 100%;
+}
+
+.input:focus-visible {
+  border-color: var(--ink);
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+textarea.input {
+  line-height: 1.6;
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.field-hint {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.notice {
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  margin: 0;
+  padding: 0.75rem 1rem;
+}
+
+.notice-error {
+  background: #fbeced;
+  color: var(--danger);
+}
+
+.notice-success {
+  background: #e8f3ec;
+  color: var(--success);
+}
+
+.notice-warning {
+  background: #fdf3dc;
+  color: #6b4c00;
+}
+
+// Moderation status label; its icon (app-status-icon) carries the reserved status colour.
+.status {
+  align-items: center;
+  display: inline-flex;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  gap: 0.4rem;
+}
+
+// Category identity mark; the colour is set per element via --dot.
+.cat-dot {
+  background: var(--dot, #6a746e);
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+  height: 0.5rem;
+  width: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

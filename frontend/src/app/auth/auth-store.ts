@@ -1,24 +1,29 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { catchError, finalize, tap, throwError } from 'rxjs';
 import { AuthApi } from './auth-api';
-import { AuthResponse, AuthUser, LoginRequest, RegisterRequest } from './auth.models';
+import { AuthResponse, LoginRequest, RegisterRequest } from './auth.models';
 
 @Injectable({ providedIn: 'root' })
 export class AuthStore {
   private readonly api = inject(AuthApi);
-  private readonly tokenState = signal<string | null>(null);
-  private readonly userState = signal<AuthUser | null>(null);
+  private readonly session = signal<AuthResponse | null>(null);
 
-  readonly token = this.tokenState.asReadonly();
-  readonly user = this.userState.asReadonly();
-  readonly isAuthenticated = computed(() => this.tokenState() !== null && this.userState() !== null);
+  readonly token = computed(() => this.session()?.token ?? null);
+  readonly user = computed(() => this.session()?.user ?? null);
+  readonly isAuthenticated = computed(() => this.session() !== null);
+
+  /** A session exists and its token has not reached its expiry time. */
+  hasValidSession(now = Date.now()): boolean {
+    const session = this.session();
+    return session !== null && Date.parse(session.expiresAt) > now;
+  }
 
   login(request: LoginRequest) {
-    return this.api.login(request).pipe(tap((response) => this.accept(response)));
+    return this.api.login(request).pipe(tap((response) => this.session.set(response)));
   }
 
   register(request: RegisterRequest) {
-    return this.api.register(request).pipe(tap((response) => this.accept(response)));
+    return this.api.register(request).pipe(tap((response) => this.session.set(response)));
   }
 
   logout() {
@@ -32,12 +37,6 @@ export class AuthStore {
   }
 
   clear(): void {
-    this.tokenState.set(null);
-    this.userState.set(null);
-  }
-
-  private accept(response: AuthResponse): void {
-    this.tokenState.set(response.token);
-    this.userState.set(response.user);
+    this.session.set(null);
   }
 }
