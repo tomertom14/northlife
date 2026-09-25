@@ -84,7 +84,13 @@ export class SecurityPage implements OnInit {
         this.loadStatus();
       },
       error: (error: HttpErrorResponse) =>
-        this.fail(error.status === 400 ? 'הקוד לא נכון או שכבר נעשה בו שימוש.' : 'הכיבוי נכשל. נסו שוב.'),
+        this.fail(
+          error.error?.code === 'mfa_locked'
+            ? 'נרשמו יותר מדי קודים שגויים. נסו שוב בעוד 15 דקות.'
+            : error.status === 400
+              ? 'הקוד לא נכון או שכבר נעשה בו שימוש.'
+              : 'הכיבוי נכשל. נסו שוב.',
+        ),
     });
   }
 

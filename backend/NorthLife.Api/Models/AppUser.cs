@@ -26,6 +26,20 @@ public sealed class AppUser
     /// <summary>Last accepted 30-second step; rejects replay of the same code.</summary>
     public long? TotpLastUsedStep { get; set; }
 
+    /// <summary>
+    /// Copied into every JWT. Rotating it (suspension, role or credential change) invalidates
+    /// all tokens issued before, even though JWTs are otherwise stateless.
+    /// </summary>
+    public string SecurityStamp { get; set; } = NewSecurityStamp();
+    public DateTimeOffset? SuspendedAtUtc { get; set; }
+    public string? SuspensionReason { get; set; }
+
+    public static string NewSecurityStamp() => Guid.NewGuid().ToString("N");
+
+    public void RotateSecurityStamp() => SecurityStamp = NewSecurityStamp();
+
+    public bool Suspended => SuspendedAtUtc is not null;
+
     public ICollection<Event> Events { get; set; } = [];
     public ICollection<EventImage> UploadedImages { get; set; } = [];
     public ICollection<ExternalLogin> ExternalLogins { get; set; } = [];

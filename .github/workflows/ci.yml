@@ -164,6 +164,19 @@ jobs:
           highlighted=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/admin/events/$event_id/highlight --header "Authorization: Bearer $admin_token" --header 'Content-Type: application/json' --data '{"revision":2,"isHighlighted":true}')
           echo "$highlighted" | jq -e '.isHighlighted == true and .revision == 3'
 
+          # User management: suspension ends live sessions at once and hides the owner's events until lifted.
+          owner_id=$(curl --fail --silent http://127.0.0.1:5080/api/auth/session --header "Authorization: Bearer $token" | jq -r '.id')
+          curl --fail --silent 'http://127.0.0.1:5080/api/admin/users?search=ci-owner' --header "Authorization: Bearer $admin_token" | jq -e --arg id "$owner_id" '(.items | length) == 1 and .items[0].id == $id and .items[0].publishedEvents == 1'
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" http://127.0.0.1:5080/api/admin/users --header "Authorization: Bearer $token")" = "403"
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request POST http://127.0.0.1:5080/api/admin/users/$owner_id/suspend --header "Authorization: Bearer $admin_token" --header 'Content-Type: application/json' --data '{"reason":"CI suspension"}')" = "204"
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" http://127.0.0.1:5080/api/auth/session --header "Authorization: Bearer $token")" = "401"
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request POST http://127.0.0.1:5080/api/auth/login --header 'Content-Type: application/json' --data '{"email":"ci-owner@example.com","password":"StrongPass123"}')" = "403"
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" http://127.0.0.1:5080/api/events/$event_id)" = "404"
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request POST http://127.0.0.1:5080/api/admin/users/$owner_id/unsuspend --header "Authorization: Bearer $admin_token")" = "204"
+          curl --fail --silent http://127.0.0.1:5080/api/events/$event_id | jq -e '.title == "CI owner event"'
+          curl --fail --silent 'http://127.0.0.1:5080/api/admin/audit?pageSize=10' --header "Authorization: Bearer $admin_token" | jq -e --arg id "$owner_id" '[.items[] | select(.targetId == $id) | .action] | (index("user.suspended") != null) and (index("user.unsuspended") != null)'
+          token=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/login --header 'Content-Type: application/json' --data '{"email":"ci-owner@example.com","password":"StrongPass123"}' | jq -r '.token')
+
           rejected_payload=$(echo "$event_payload" | jq '.title = "CI rejected event"')
           rejected_event=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/manage/events --header "Authorization: Bearer $token" --header 'Content-Type: application/json' --data "$rejected_payload")
           rejected_id=$(echo "$rejected_event" | jq -r '.id')

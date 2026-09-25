@@ -98,7 +98,9 @@ export class LoginPage {
   private fail(error: HttpErrorResponse, unauthorized: string): void {
     this.submitting.set(false);
     this.errorMessage.set(
-      error.status === 429
+      error.error?.code === 'mfa_locked'
+        ? 'נרשמו יותר מדי קודים שגויים. מטעמי אבטחה אפשר לנסות שוב בעוד 15 דקות.'
+        : error.status === 429
         ? 'היו יותר מדי ניסיונות. נסו שוב בעוד דקה.'
         : error.status === 401 || error.status === 400
           ? unauthorized

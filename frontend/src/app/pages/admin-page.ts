@@ -6,6 +6,7 @@ import { Observable, forkJoin } from 'rxjs';
 import { AdminEvent, AdminEventsApi } from '../admin/admin-events-api';
 import { AuthStore } from '../auth/auth-store';
 import { PrivateImage } from '../images/private-image';
+import { AdminNav } from '../manage/admin-nav';
 import { EventForm } from '../manage/event-form';
 import { StatTile, StatTiles } from '../manage/stat-tiles';
 import { StatusBadge } from '../manage/status-badge';
@@ -17,7 +18,7 @@ import { ToastService } from '../shared/toast';
 
 @Component({
   selector: 'app-admin-page',
-  imports: [FormsModule, RouterLink, EventForm, StatTiles, StatusBadge, PrivateImage],
+  imports: [FormsModule, RouterLink, AdminNav, EventForm, StatTiles, StatusBadge, PrivateImage],
   templateUrl: './admin-page.html',
   styleUrl: './manage-page.scss',
 })

@@ -9,7 +9,8 @@ namespace NorthLife.Api.Services;
 public sealed class AdminEventService(
     AppDbContext dbContext,
     EventLifecycleService lifecycle,
-    EventImageService imageService)
+    EventImageService imageService,
+    AuditLog audit)
 {
     public async Task<IReadOnlyList<AdminEventResponse>> ListAsync(
         EventStatus? status,
@@ -53,12 +54,14 @@ public sealed class AdminEventService(
         var eventItem = NewEvent(adminId, request, normalized);
         lifecycle.PublishNewByAdmin(eventItem);
         dbContext.Events.Add(eventItem);
+        audit.Record(adminId, "event.created", "Event", eventItem.Id, new { eventItem.Title });
         await dbContext.SaveChangesAsync(cancellationToken);
         eventItem.Owner = admin;
         return ToResponse(eventItem);
     }
 
     public async Task<AdminEventResponse> UpdateAsync(
+        Guid actorId,
         Guid id,
         OwnerEventUpsertRequest request,
         CancellationToken cancellationToken)
@@ -68,33 +71,50 @@ public sealed class AdminEventService(
         await imageService.RequireOwnedAsync(request.ImageId, eventItem.OwnerId, true, cancellationToken);
         Apply(eventItem, request, normalized);
         lifecycle.EditByAdmin(eventItem, request.Revision!.Value);
+        audit.Record(actorId, "event.updated", "Event", eventItem.Id, new { eventItem.Title, eventItem.Revision });
         await SaveAsync(cancellationToken);
         return ToResponse(eventItem);
     }
 
-    public Task<AdminEventResponse> ApproveAsync(Guid id, int revision, CancellationToken cancellationToken) =>
-        ChangeAsync(id, eventItem => lifecycle.Approve(eventItem, revision), cancellationToken);
+    public Task<AdminEventResponse> ApproveAsync(Guid actorId, Guid id, int revision, CancellationToken cancellationToken) =>
+        ChangeAsync(actorId, id, "event.approved", eventItem => lifecycle.Approve(eventItem, revision), cancellationToken);
 
-    public Task<AdminEventResponse> RejectAsync(Guid id, int revision, string reason, CancellationToken cancellationToken) =>
-        ChangeAsync(id, eventItem => lifecycle.Reject(eventItem, revision, reason), cancellationToken);
+    public Task<AdminEventResponse> RejectAsync(Guid actorId, Guid id, int revision, string reason, CancellationToken cancellationToken) =>
+        ChangeAsync(actorId, id, "event.rejected", eventItem => lifecycle.Reject(eventItem, revision, reason), cancellationToken);
 
-    public Task<AdminEventResponse> HighlightAsync(Guid id, int revision, bool highlighted, CancellationToken cancellationToken) =>
-        ChangeAsync(id, eventItem => lifecycle.SetHighlight(eventItem, revision, highlighted), cancellationToken);
+    public Task<AdminEventResponse> HighlightAsync(Guid actorId, Guid id, int revision, bool highlighted, CancellationToken cancellationToken) =>
+        ChangeAsync(
+            actorId,
+            id,
+            highlighted ? "event.highlighted" : "event.unhighlighted",
+            eventItem => lifecycle.SetHighlight(eventItem, revision, highlighted),
+            cancellationToken);
 
-    public async Task DeleteAsync(Guid id, int revision, CancellationToken cancellationToken)
+    public async Task DeleteAsync(Guid actorId, Guid id, int revision, CancellationToken cancellationToken)
     {
         var eventItem = await RequireEventAsync(id, cancellationToken);
         lifecycle.Delete(eventItem, revision);
+        audit.Record(actorId, "event.deleted", "Event", eventItem.Id, new { eventItem.Title });
         await SaveAsync(cancellationToken);
     }
 
     private async Task<AdminEventResponse> ChangeAsync(
+        Guid actorId,
         Guid id,
+        string action,
         Action<Event> change,
         CancellationToken cancellationToken)
     {
         var eventItem = await RequireEventAsync(id, cancellationToken);
+        var before = eventItem.Status;
         change(eventItem);
+        audit.Record(actorId, action, "Event", eventItem.Id, new
+        {
+            eventItem.Title,
+            from = before.ToString(),
+            to = eventItem.Status.ToString(),
+            eventItem.RejectionReason,
+        });
         await SaveAsync(cancellationToken);
         return ToResponse(eventItem);
     }

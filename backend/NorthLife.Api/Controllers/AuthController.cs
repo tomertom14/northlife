@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using NorthLife.Api.Authentication;
 using NorthLife.Api.Contracts;
 using NorthLife.Api.Data;
+using NorthLife.Api.Identity;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
@@ -51,6 +52,9 @@ public sealed class AuthController(AuthService authService, AccountService accou
         catch (LoginFailedException)
         {
             return Problem(StatusCodes.Status401Unauthorized, "ההתחברות נכשלה.", "invalid_credentials", "כתובת האימייל או הסיסמה אינם נכונים.");
+        }        catch (AccountSuspendedException)
+        {
+            return Problem(StatusCodes.Status403Forbidden, "החשבון מושעה.", "account_suspended", "החשבון הושעה על ידי צוות NorthLife. לבירור פנו אלינו.");
         }
     }
 
@@ -71,6 +75,14 @@ public sealed class AuthController(AuthService authService, AccountService accou
                 exception.Code,
                 exception.Code == "mfa_expired" ? "פג תוקף שלב האימות. התחברו מחדש." : "הקוד אינו נכון או שכבר נעשה בו שימוש.");
         }
+        catch (SecondFactorLockedException)
+        {
+            return MfaLockedProblem();
+        }
+        catch (AccountSuspendedException)
+        {
+            return Problem(StatusCodes.Status403Forbidden, "החשבון מושעה.", "account_suspended", "החשבון הושעה על ידי צוות NorthLife. לבירור פנו אלינו.");
+        }
     }
 
     [HttpPost("google")]
@@ -85,6 +97,9 @@ public sealed class AuthController(AuthService authService, AccountService accou
         catch (GoogleSignInException exception)
         {
             return GoogleProblem(exception.Code);
+        }        catch (AccountSuspendedException)
+        {
+            return Problem(StatusCodes.Status403Forbidden, "החשבון מושעה.", "account_suspended", "החשבון הושעה על ידי צוות NorthLife. לבירור פנו אלינו.");
         }
     }
 
@@ -208,6 +223,13 @@ public sealed class AuthController(AuthService authService, AccountService accou
         details.Extensions["code"] = code;
         return StatusCode(StatusCodes.Status400BadRequest, details);
     }
+
+    private ObjectResult MfaLockedProblem() =>
+        Problem(
+            StatusCodes.Status429TooManyRequests,
+            "יותר מדי ניסיונות.",
+            "mfa_locked",
+            "נרשמו יותר מדי קודים שגויים. נסו שוב בעוד 15 דקות.");
 
     private ObjectResult Problem(int status, string title, string code, string? detail)
     {

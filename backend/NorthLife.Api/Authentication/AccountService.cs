@@ -13,7 +13,8 @@ public sealed class AccountService(
     IPasswordHasher<AppUser> passwordHasher,
     UserTokenService userTokens,
     AccountEmails emails,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ISessionValidator sessions)
 {
     public async Task<bool> VerifyEmailAsync(string? token, CancellationToken cancellationToken)
     {
@@ -58,7 +59,10 @@ public sealed class AccountService(
         if (user is null) return false;
         user.PasswordHash = passwordHasher.HashPassword(user, password!);
         user.EmailConfirmedAtUtc ??= timeProvider.GetUtcNow();
+        // Signs out every existing session, e.g. one opened by whoever knew the old password.
+        user.RotateSecurityStamp();
         await dbContext.SaveChangesAsync(cancellationToken);
+        sessions.Invalidate(user.Id);
         return true;
     }
 }

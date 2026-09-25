@@ -59,7 +59,6 @@ public sealed class ImagesController(
         var now = timeProvider.GetUtcNow();
         var image = await dbContext.EventImages
             .AsNoTracking()
-            .Include(candidate => candidate.Events)
             .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
 
         if (image is null)
@@ -67,9 +66,13 @@ public sealed class ImagesController(
             return NotFound();
         }
 
-        var isPublic = image.Events.Any(eventItem =>
+        // Same visibility rule as the public feed: published, not ended, owner not suspended.
+        var isPublic = await dbContext.Events.AnyAsync(eventItem =>
+            eventItem.ImageId == id &&
             eventItem.Status == EventStatus.Published &&
-            eventItem.EndAtUtc > now);
+            eventItem.EndAtUtc > now &&
+            eventItem.Owner.SuspendedAtUtc == null,
+            cancellationToken);
         var isOwner = TryUserId(out var userId) && image.UploaderId == userId;
         var isAdmin = User.IsInRole(nameof(UserRole.Admin));
 

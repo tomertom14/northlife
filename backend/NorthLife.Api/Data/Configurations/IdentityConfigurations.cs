@@ -51,6 +51,31 @@ public sealed class ExternalLoginConfiguration : IEntityTypeConfiguration<Extern
     }
 }
 
+public sealed class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntry>
+{
+    public void Configure(EntityTypeBuilder<AuditEntry> builder)
+    {
+        builder.ToTable("audit_entries");
+        builder.HasKey(entry => entry.Id).HasName("pk_audit_entries");
+        builder.Property(entry => entry.Id).HasColumnName("id").ValueGeneratedNever();
+        builder.Property(entry => entry.ActorId).HasColumnName("actor_id");
+        builder.Property(entry => entry.Action).HasColumnName("action").HasMaxLength(60);
+        builder.Property(entry => entry.TargetType).HasColumnName("target_type").HasMaxLength(30);
+        builder.Property(entry => entry.TargetId).HasColumnName("target_id");
+        builder.Property(entry => entry.Details).HasColumnName("details").HasColumnType("jsonb");
+        builder.Property(entry => entry.CreatedAtUtc).HasColumnName("created_at_utc").HasColumnType("timestamptz");
+
+        builder.HasIndex(entry => new { entry.CreatedAtUtc, entry.Id }).HasDatabaseName("ix_audit_entries_created_id");
+        builder.HasIndex(entry => entry.TargetId).HasDatabaseName("ix_audit_entries_target_id");
+        builder.HasIndex(entry => entry.ActorId).HasDatabaseName("ix_audit_entries_actor_id");
+        builder.HasOne(entry => entry.Actor)
+            .WithMany()
+            .HasForeignKey(entry => entry.ActorId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_audit_entries_users_actor_id");
+    }
+}
+
 public sealed class RecoveryCodeConfiguration : IEntityTypeConfiguration<RecoveryCode>
 {
     public void Configure(EntityTypeBuilder<RecoveryCode> builder)

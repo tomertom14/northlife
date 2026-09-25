@@ -81,8 +81,13 @@ builder.Services.AddScoped<AuthTokenService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<UserTokenService>();
+builder.Services.AddSingleton<SecondFactorThrottle>();
 builder.Services.AddScoped<TotpService>();
 builder.Services.AddSingleton<IdentityTickets>();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<ISessionValidator, SessionValidator>();
+builder.Services.AddScoped<AuditLog>();
+builder.Services.AddScoped<AdminUserService>();
 
 // Data Protection encrypts TOTP secrets and sign-in tickets. Keys must survive restarts and deploys.
 var dataProtection = builder.Services.AddDataProtection().SetApplicationName("NorthLife");
@@ -141,6 +146,20 @@ builder.Services
         };
         options.Events = new JwtBearerEvents
         {
+            // Signature and expiry are valid; now reject tokens of suspended accounts or rotated stamps.
+            OnTokenValidated = async context =>
+            {
+                var principal = context.Principal;
+                var subject = principal?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+                var stamp = principal?.FindFirst(AuthTokenService.StampClaim)?.Value;
+                var validator = context.HttpContext.RequestServices.GetRequiredService<ISessionValidator>();
+                if (!Guid.TryParse(subject, out var userId) ||
+                    string.IsNullOrEmpty(stamp) ||
+                    !await validator.IsCurrentAsync(userId, stamp, context.HttpContext.RequestAborted))
+                {
+                    context.Fail("session_revoked");
+                }
+            },
             OnChallenge = async context =>
             {
                 context.HandleResponse();

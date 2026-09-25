@@ -16,6 +16,9 @@ public sealed class AuthTokenService(
 
     /// <summary>"true" only when this session passed the TOTP or backup-code step.</summary>
     public const string MfaClaim = "northlife:mfa";
+
+    /// <summary>The account's security stamp at issue time; see <see cref="SessionValidator"/>.</summary>
+    public const string StampClaim = "northlife:stamp";
     private readonly JwtOptions _options = options.Value;
 
     public AuthResponse Create(AppUser user, bool mfaVerified = false)
@@ -30,6 +33,7 @@ public sealed class AuthTokenService(
             new Claim(ClaimTypes.Role, user.Role.ToString()),
             new Claim(BusinessNameClaim, user.BusinessName),
             new Claim(MfaClaim, mfaVerified ? "true" : "false"),
+            new Claim(StampClaim, user.SecurityStamp),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
         };
         var credentials = new SigningCredentials(

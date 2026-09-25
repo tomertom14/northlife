@@ -109,6 +109,7 @@ public sealed class AuthService(
         var userId = tickets.ReadMfa(request.MfaToken) ?? throw new LoginFailedException("mfa_expired");
         var user = await dbContext.Users.SingleOrDefaultAsync(candidate => candidate.Id == userId, cancellationToken)
             ?? throw new LoginFailedException("mfa_expired");
+        if (user.Suspended) throw new AccountSuspendedException();
         if (!await totp.VerifySecondFactorAsync(user, request.Code ?? string.Empty, cancellationToken))
         {
             throw new LoginFailedException("invalid_code");
@@ -198,10 +199,14 @@ public sealed class AuthService(
     internal static string NormalizeEmail(string email) =>
         email.Trim().ToUpperInvariant();
 
-    private SignInOutcome BeginSession(AppUser user) =>
-        user.TotpEnabled
+    private SignInOutcome BeginSession(AppUser user)
+    {
+        // Only reached after the credential check, so this does not reveal whether an account exists.
+        if (user.Suspended) throw new AccountSuspendedException();
+        return user.TotpEnabled
             ? new SecondFactorRequired(tickets.IssueMfa(user.Id))
             : new SignedIn(tokenService.Create(user));
+    }
 
     private async Task SaveNewAccountAsync(CancellationToken cancellationToken)
     {
@@ -308,6 +313,8 @@ public sealed class LoginFailedException(string code = "invalid_credentials") : 
 {
     public string Code { get; } = code;
 }
+
+public sealed class AccountSuspendedException : Exception;
 
 public sealed class GoogleSignInException(string code) : Exception(code)
 {

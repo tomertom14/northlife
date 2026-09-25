@@ -21,7 +21,7 @@ public sealed class PublicEventQueryService(
             dbContext.Events
                 .AsNoTracking()
                 .Where(eventItem =>
-                    eventItem.Status == EventStatus.Published &&
+                    eventItem.Status == EventStatus.Published && eventItem.Owner.SuspendedAtUtc == null &&
                     eventItem.EndAtUtc > now),
             parameters);
 
@@ -78,7 +78,7 @@ public sealed class PublicEventQueryService(
             dbContext.Events
                 .AsNoTracking()
                 .Where(eventItem =>
-                    eventItem.Status == EventStatus.Published &&
+                    eventItem.Status == EventStatus.Published && eventItem.Owner.SuspendedAtUtc == null &&
                     eventItem.IsHighlighted &&
                     eventItem.EndAtUtc > now),
             topPickQuery);
@@ -114,7 +114,7 @@ public sealed class PublicEventQueryService(
             .AsNoTracking()
             .Where(eventItem =>
                 eventItem.Id == id &&
-                eventItem.Status == EventStatus.Published &&
+                eventItem.Status == EventStatus.Published && eventItem.Owner.SuspendedAtUtc == null &&
                 eventItem.EndAtUtc > now)
             .Select(eventItem => new EventDetailsRow(
                 eventItem.Id,
@@ -166,7 +166,7 @@ public sealed class PublicEventQueryService(
         var now = timeProvider.GetUtcNow();
         var query = ApplySharedFilters(
             dbContext.Events.AsNoTracking().Where(eventItem =>
-                eventItem.Status == EventStatus.Published &&
+                eventItem.Status == EventStatus.Published && eventItem.Owner.SuspendedAtUtc == null &&
                 eventItem.EndAtUtc > now &&
                 eventItem.Latitude >= map.South && eventItem.Latitude <= map.North &&
                 eventItem.Longitude >= map.West && eventItem.Longitude <= map.East),

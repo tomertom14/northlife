@@ -76,9 +76,18 @@ public sealed class SecurityController(
             return StatusCode(StatusCodes.Status403Forbidden, problem);
         }
 
-        if (!await totp.VerifySecondFactorAsync(user, request.Code ?? string.Empty, cancellationToken))
+        try
         {
-            return CodeProblem("הקוד אינו נכון או שכבר נעשה בו שימוש.");
+            if (!await totp.VerifySecondFactorAsync(user, request.Code ?? string.Empty, cancellationToken))
+            {
+                return CodeProblem("הקוד אינו נכון או שכבר נעשה בו שימוש.");
+            }
+        }
+        catch (SecondFactorLockedException)
+        {
+            var locked = new ProblemDetails { Status = StatusCodes.Status429TooManyRequests, Title = "נרשמו יותר מדי קודים שגויים. נסו שוב בעוד 15 דקות." };
+            locked.Extensions["code"] = "mfa_locked";
+            return StatusCode(StatusCodes.Status429TooManyRequests, locked);
         }
 
         await totp.DisableAsync(user, cancellationToken);

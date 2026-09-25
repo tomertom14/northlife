@@ -14,75 +14,7 @@ param(
 $ErrorActionPreference = 'Stop'
 # $PSScriptRoot is not available in parameter defaults on Windows PowerShell 5.1.
 if (-not $ImagePath) { $ImagePath = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\..\docs\screenshots\phase-5-dashboard.png' }
-$script:failures = 0
-
-function Check([string]$Name, [bool]$Condition) {
-  if ($Condition) { Write-Host "PASS  $Name" } else { Write-Host "FAIL  $Name" -ForegroundColor Red; $script:failures++ }
-}
-
-# Works on Windows PowerShell 5.1 and PowerShell 7: HTTP errors are caught, not thrown.
-function Call([string]$Method, [string]$Path, $Body = $null, [string]$Token = $null) {
-  $headers = @{}
-  if ($Token) { $headers.Authorization = "Bearer $Token" }
-  $params = @{ Method = $Method; Uri = "$BaseUrl$Path"; Headers = $headers; UseBasicParsing = $true }
-  if ($null -ne $Body) {
-    $params.Body = [Text.Encoding]::UTF8.GetBytes(($Body | ConvertTo-Json -Depth 5))
-    $params.ContentType = 'application/json; charset=utf-8'
-  }
-  try {
-    $response = Invoke-WebRequest @params
-    $status = [int]$response.StatusCode
-    $content = $response.Content
-  } catch {
-    $failed = $_.Exception.Response
-    if (-not $failed) { throw }
-    $status = [int]$failed.StatusCode
-    $content = $_.ErrorDetails.Message
-    # Windows PowerShell 5.1 does not always fill ErrorDetails; read the body stream instead.
-    if (-not $content -and $failed -is [System.Net.HttpWebResponse]) {
-      $stream = $failed.GetResponseStream()
-      if ($stream.CanSeek) { $stream.Position = 0 }
-      $content = (New-Object IO.StreamReader($stream, [Text.Encoding]::UTF8)).ReadToEnd()
-    }
-  }
-  $json = $null
-  if ($content) { try { $json = $content | ConvertFrom-Json } catch { } }
-  [pscustomobject]@{ Status = $status; Json = $json }
-}
-
-# RFC 6238 TOTP computed here, independently of the API implementation.
-function Get-Totp([string]$Secret, [long]$StepOffset = 0) {
-  $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
-  $bits = ($Secret.ToUpperInvariant() -replace '[^A-Z2-7]', '').ToCharArray() | ForEach-Object { [Convert]::ToString($alphabet.IndexOf($_), 2).PadLeft(5, '0') }
-  $bitString = -join $bits
-  $key = for ($i = 0; $i + 8 -le $bitString.Length; $i += 8) { [Convert]::ToByte($bitString.Substring($i, 8), 2) }
-  $step = [long][Math]::Floor([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() / 30) + $StepOffset
-  $counter = [BitConverter]::GetBytes($step); [Array]::Reverse($counter)
-  $hmac = [System.Security.Cryptography.HMACSHA1]::new([byte[]]$key)
-  $hash = $hmac.ComputeHash($counter)
-  $offset = $hash[19] -band 15
-  # Widen to [int] first: PowerShell keeps -shl on a [byte] as a byte and overflows to 0.
-  $binary = (([int]$hash[$offset] -band 0x7f) -shl 24) -bor ([int]$hash[$offset + 1] -shl 16) -bor ([int]$hash[$offset + 2] -shl 8) -bor [int]$hash[$offset + 3]
-  ($binary % 1000000).ToString('000000')
-}
-
-# Newest message to $To whose link points at $LinkPath (ASCII, so no charset guessing is needed).
-function Get-MailToken([string]$To, [string]$LinkPath) {
-  for ($i = 0; $i -lt 15; $i++) {
-    $search = Invoke-RestMethod "$MailpitUrl/api/v1/search?query=to:$To"
-    foreach ($message in $search.messages) {
-      $text = (Invoke-RestMethod "$MailpitUrl/api/v1/message/$($message.ID)").Text
-      if ($text -match "$([regex]::Escape($LinkPath))\?token=([A-Za-z0-9_-]+)") { return $Matches[1] }
-    }
-    Start-Sleep -Milliseconds 500
-  }
-  return $null
-}
-
-function New-Image([string]$Token) {
-  $path = (Resolve-Path $ImagePath).Path
-  (& curl.exe --silent --fail -X POST "$BaseUrl/api/manage/images" -H "Authorization: Bearer $Token" -F "file=@$path;type=image/png") | ConvertFrom-Json
-}
+. (Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'e2e-common.ps1')
 
 $stamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 $email = "owner.$stamp@example.com"
@@ -92,7 +24,7 @@ Write-Host "`n== Registration and email verification"
 $register = Call POST '/api/auth/register' @{ fullName = 'בעלת עסק לבדיקה'; email = $email; password = $password; phone = '0501234567'; businessName = 'עסק לבדיקה' }
 Check 'register returns 201 as an unverified business owner' ($register.Status -eq 201 -and $register.Json.user.emailConfirmed -eq $false -and $register.Json.user.role -eq 'BusinessOwner')
 $ownerToken = $register.Json.token
-$image = New-Image $ownerToken
+$image = New-Image $ownerToken $ImagePath
 $start = [DateTimeOffset]::UtcNow.AddDays(2).ToString('o'); $end = [DateTimeOffset]::UtcNow.AddDays(2).AddHours(2).ToString('o')
 $eventBody = @{ title = 'אירוע בדיקה לאימות'; description = 'נוצר בבדיקת קצה לקצה'; category = 'Culture'; venueName = 'מרכז'; locality = 'צפת'; address = 'רחוב 1'; latitude = 32.96; longitude = 35.49; startAt = $start; endAt = $end; price = 0; imageId = $image.id; organizerName = 'עסק לבדיקה'; tags = @() }
 $blocked = Call POST '/api/manage/events' $eventBody $ownerToken

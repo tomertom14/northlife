@@ -162,3 +162,38 @@ public sealed class IdentityTicketTests
         Assert.Null(_tickets.ReadMfa(ticket));
     }
 }
+
+public sealed class SecondFactorThrottleTests
+{
+    private static SecondFactorThrottle NewThrottle() =>
+        new(new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()));
+
+    [Fact]
+    public void Locks_after_the_maximum_number_of_failures()
+    {
+        var throttle = NewThrottle();
+        var userId = Guid.NewGuid();
+        for (var failure = 1; failure < SecondFactorThrottle.MaxFailures; failure++)
+        {
+            throttle.RecordFailure(userId);
+            Assert.False(throttle.IsLocked(userId));
+        }
+
+        throttle.RecordFailure(userId);
+        Assert.True(throttle.IsLocked(userId));
+    }
+
+    [Fact]
+    public void Counts_each_account_separately_and_resets_on_success()
+    {
+        var throttle = NewThrottle();
+        var attacked = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        for (var failure = 0; failure < SecondFactorThrottle.MaxFailures; failure++) throttle.RecordFailure(attacked);
+
+        Assert.True(throttle.IsLocked(attacked));
+        Assert.False(throttle.IsLocked(other));
+        throttle.Reset(attacked);
+        Assert.False(throttle.IsLocked(attacked));
+    }
+}

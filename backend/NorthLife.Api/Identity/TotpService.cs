@@ -12,7 +12,9 @@ public sealed record TotpSetup(string Secret, string ProvisioningUri, string QrC
 public sealed class TotpService(
     AppDbContext dbContext,
     IDataProtectionProvider dataProtection,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    Authentication.ISessionValidator sessions,
+    SecondFactorThrottle throttle)
 {
     public const int RecoveryCodeCount = 10;
     private readonly IDataProtector _protector = dataProtection.CreateProtector("NorthLife.Totp.v1");
@@ -43,6 +45,8 @@ public sealed class TotpService(
         user.TotpPendingSecretProtected = null;
         user.TotpEnabledAtUtc = timeProvider.GetUtcNow();
         user.TotpLastUsedStep = step;
+        // Sessions opened before 2FA (possibly by someone else) end; the caller issues a fresh token.
+        user.RotateSecurityStamp();
 
         await dbContext.RecoveryCodes.Where(existing => existing.UserId == user.Id).ExecuteDeleteAsync(cancellationToken);
         var codes = new List<string>(RecoveryCodeCount);
@@ -54,26 +58,38 @@ public sealed class TotpService(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        sessions.Invalidate(user.Id);
         return codes;
     }
 
-    /// <summary>Accepts a current TOTP code (each step once) or an unused backup code.</summary>
+    /// <summary>
+    /// Accepts a current TOTP code (each step once) or an unused backup code. Throws
+    /// <see cref="SecondFactorLockedException"/> once the account has too many recent wrong codes.
+    /// </summary>
     public async Task<bool> VerifySecondFactorAsync(AppUser user, string code, CancellationToken cancellationToken)
     {
         if (!user.TotpEnabled) return false;
-        var trimmed = code.Trim();
+        if (throttle.IsLocked(user.Id)) throw new SecondFactorLockedException();
 
-        if (trimmed.Length == Totp.DefaultDigits && trimmed.All(char.IsAsciiDigit))
+        var accepted = await CheckCodeAsync(user, code.Trim(), cancellationToken);
+        if (accepted) throttle.Reset(user.Id);
+        else throttle.RecordFailure(user.Id);
+        return accepted;
+    }
+
+    private async Task<bool> CheckCodeAsync(AppUser user, string code, CancellationToken cancellationToken)
+    {
+        if (code.Length == Totp.DefaultDigits && code.All(char.IsAsciiDigit))
         {
             var secret = Base32.Decode(_protector.Unprotect(user.TotpSecretProtected!));
-            var step = Totp.Verify(secret, trimmed, timeProvider.GetUtcNow(), user.TotpLastUsedStep);
+            var step = Totp.Verify(secret, code, timeProvider.GetUtcNow(), user.TotpLastUsedStep);
             if (step is null) return false;
             user.TotpLastUsedStep = step;
             await dbContext.SaveChangesAsync(cancellationToken);
             return true;
         }
 
-        var hash = SecureTokens.Hash(SecureTokens.NormalizeRecoveryCode(trimmed));
+        var hash = SecureTokens.Hash(SecureTokens.NormalizeRecoveryCode(code));
         var now = timeProvider.GetUtcNow();
         var used = await dbContext.RecoveryCodes
             .Where(candidate => candidate.UserId == user.Id && candidate.CodeHash == hash && candidate.UsedAtUtc == null)
@@ -87,8 +103,10 @@ public sealed class TotpService(
         user.TotpPendingSecretProtected = null;
         user.TotpEnabledAtUtc = null;
         user.TotpLastUsedStep = null;
+        user.RotateSecurityStamp();
         await dbContext.RecoveryCodes.Where(existing => existing.UserId == user.Id).ExecuteDeleteAsync(cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+        sessions.Invalidate(user.Id);
     }
 
     public Task<int> RemainingRecoveryCodesAsync(Guid userId, CancellationToken cancellationToken) =>
