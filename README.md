@@ -4,13 +4,31 @@ NorthLife is a Hebrew, RTL platform for discovering events and activities in nor
 
 ## Current status
 
-Phase 10 production packaging: one-origin container, explicit migrations, Render Blueprint, persistent images, structured request logs, and operations runbook.
+Phases 11–15 of the final-project roadmap are complete; each phase has a verification record in [docs/phases](docs/phases/README.md).
+
+| Phase | What it adds |
+| --- | --- |
+| 11 | Verified accounts, password reset, Google sign-in, TOTP two-factor authentication |
+| 12 | Admin user management, revocable sessions, audit log |
+| 13 | First-party analytics: HyperLogLog, decayed popularity, spike detection; Prometheus and Grafana |
+| 14 | "Hot now" ranking with position-bias correction, geohash "near me", map clustering |
+| 15 | Recommendations: Hebrew TF-IDF, item-item CF, adaptive blend, MMR, offline evaluation |
+
+Phase 16 (deployment) follows local QA; see [docs/local-qa.md](docs/local-qa.md).
 
 ## Project documents
 
 - [Initial requirements](NorthLife_Initial_Project_Requirements.md)
 - [Base implementation plan](NorthLife_Base_Plan.md)
 - [Phase verification records](docs/phases/README.md)
+- How the features work:
+  - [Identity](docs/features/identity.md)
+  - [Admin users](docs/features/admin-users.md)
+  - [Analytics](docs/features/analytics.md)
+  - [Smart ranking](docs/features/smart-ranking.md)
+  - [Recommendations](docs/features/recommendations.md)
+- [Recommendation offline evaluation](docs/evaluation/recommendations.md)
+- [Local QA guide](docs/local-qa.md)
 - [Deployment and operations](docs/deployment.md)
 
 ## Prerequisites
@@ -57,6 +75,23 @@ npm --prefix frontend start
 ~~~
 
 Open <http://localhost:4200>. API liveness is available at /health/live; readiness checks PostgreSQL at /health/ready.
+
+## Whole stack in Docker
+
+The quickest way to see everything is the production image with PostgreSQL and Mailpit:
+
+~~~powershell
+powershell -File scripts/local/start-stack.ps1 -Build -BootstrapAdmin -SeedDemo -Monitoring
+~~~
+
+Other commands of the API, all run against the configured database unless noted:
+
+| Command | What it does |
+| --- | --- |
+| `--migrate` | Applies database migrations. |
+| `--seed-demo` | Adds 6 demo businesses, 64 events and 30 days of simulated traffic, once. |
+| `--seed-load N` | Adds N extra events for load tests. |
+| `--evaluate-recommendations [file]` | Runs the offline recommender evaluation. Needs no database. |
 
 ## Administrator bootstrap
 
