@@ -68,6 +68,23 @@ public sealed class EventPopularityConfiguration : IEntityTypeConfiguration<Even
     }
 }
 
+public sealed class PositionPropensityConfiguration : IEntityTypeConfiguration<PositionPropensityRow>
+{
+    public void Configure(EntityTypeBuilder<PositionPropensityRow> builder)
+    {
+        builder.ToTable("position_propensities");
+        builder.HasKey(row => new { row.Surface, row.Position }).HasName("pk_position_propensities");
+        builder.Property(row => row.Surface).HasColumnName("surface");
+        builder.Property(row => row.Position).HasColumnName("position");
+        builder.Property(row => row.Propensity).HasColumnName("propensity");
+        builder.Property(row => row.RawPropensity).HasColumnName("raw_propensity");
+        builder.Property(row => row.NaiveRatio).HasColumnName("naive_ratio");
+        builder.Property(row => row.Impressions).HasColumnName("impressions");
+        builder.Property(row => row.Clicks).HasColumnName("clicks");
+        builder.Property(row => row.EstimatedAtUtc).HasColumnName("estimated_at_utc").HasColumnType("timestamptz");
+    }
+}
+
 public sealed class AnalyticsCheckpointConfiguration : IEntityTypeConfiguration<AnalyticsCheckpoint>
 {
     public void Configure(EntityTypeBuilder<AnalyticsCheckpoint> builder)

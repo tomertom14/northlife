@@ -115,3 +115,42 @@
     padding-inline: 0;
   }
 }
+
+.sorts {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  display: inline-flex;
+  padding: 0.2rem;
+}
+
+.sort {
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  min-height: 2.1rem;
+  padding: 0 0.85rem;
+  white-space: nowrap;
+}
+
+.sort[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+@media (max-width: 40rem) {
+  // The phone layout is a two-column grid; the sort control takes a whole row of its own.
+  .sorts {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .sort {
+    flex: 1;
+    padding: 0 0.5rem;
+  }
+}

@@ -26,6 +26,9 @@ public sealed class Event
     public DateTimeOffset? DeletedAtUtc { get; set; }
     public int Revision { get; set; } = 1;
 
+    /// <summary>Geohash of the venue (precision 9, about 5 m); kept in sync on save for "near me" searches.</summary>
+    public string Geohash { get; set; } = string.Empty;
+
     public AppUser Owner { get; set; } = null!;
     public EventImage Image { get; set; } = null!;
 }

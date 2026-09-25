@@ -97,6 +97,8 @@ builder.Services.AddScoped<AnalyticsIngestService>();
 builder.Services.AddScoped<AnalyticsRollupService>();
 builder.Services.AddScoped<OwnerAnalyticsService>();
 builder.Services.AddScoped<DemoSeeder>();
+builder.Services.Configure<NorthLife.Api.Ranking.RankingOptions>(builder.Configuration.GetSection(NorthLife.Api.Ranking.RankingOptions.SectionName));
+builder.Services.AddScoped<NorthLife.Api.Ranking.PositionBiasService>();
 if (builder.Configuration.GetValue($"{AnalyticsOptions.SectionName}:WorkerEnabled", true))
 {
     builder.Services.AddHostedService<AnalyticsWorker>();
@@ -313,6 +315,18 @@ if (args.Contains("--seed-demo", StringComparer.OrdinalIgnoreCase))
             result.Owners, result.Owners, result.OwnerPassword, result.Events, result.Interactions, result.Visitors);
     }
 
+    return;
+}
+
+if (args.Contains("--seed-load", StringComparer.OrdinalIgnoreCase))
+{
+    // "--seed-load 10000": extra events for performance tests.
+    var position = Array.FindIndex(args, argument => string.Equals(argument, "--seed-load", StringComparison.OrdinalIgnoreCase));
+    var count = position + 1 < args.Length && int.TryParse(args[position + 1], out var parsed) ? parsed : 10_000;
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+    var added = await scope.ServiceProvider.GetRequiredService<DemoSeeder>().SeedLoadAsync(count, CancellationToken.None);
+    app.Logger.LogInformation("Added {EventCount} load-test events.", added);
     return;
 }
 

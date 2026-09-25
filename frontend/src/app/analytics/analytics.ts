@@ -9,6 +9,8 @@ export interface TrackContext {
   source: InteractionSource;
   /** 1-based position in the list the visitor saw. */
   position?: number;
+  /** Which list it was (filters and sort); the server hashes it to group clicks by list. */
+  context?: string;
 }
 
 interface PendingInteraction {
@@ -16,6 +18,7 @@ interface PendingInteraction {
   type: InteractionType;
   source: InteractionSource;
   position?: number;
+  context?: string;
 }
 
 const VISITOR_KEY = 'northlife.visitor';
@@ -50,7 +53,7 @@ export class AnalyticsService {
 
   track(eventId: string, type: InteractionType, context: TrackContext): void {
     if (!this.enabled || !eventId) return;
-    this.queue.push({ eventId, type, source: context.source, position: context.position });
+    this.queue.push({ eventId, type, source: context.source, position: context.position, context: context.context });
     if (this.queue.length >= MAX_BATCH) this.flush();
     else this.timer ??= setTimeout(() => this.flush(), FLUSH_DELAY_MS);
   }

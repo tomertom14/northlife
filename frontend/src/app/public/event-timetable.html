@@ -21,10 +21,11 @@
             [class.live]="row.state === 'live'"
             [class.soon]="row.state === 'soon'"
             [routerLink]="['/events', row.event.id]"
-            [state]="{ source: 'Feed', position: rankOffset() + row.index + 1 }"
+            [state]="{ source: 'Feed', position: rankOffset() + row.index + 1, context: context() }"
             [appTrackImpression]="row.event.id"
             trackSource="Feed"
-            [trackPosition]="rankOffset() + row.index + 1">
+            [trackPosition]="rankOffset() + row.index + 1"
+            [trackContext]="context()">
             <span class="time">
               <span class="time-line" [class.visually-hidden]="!row.showTime">
                 @if (row.state === 'live') {

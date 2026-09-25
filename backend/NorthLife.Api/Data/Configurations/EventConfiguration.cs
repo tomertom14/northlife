@@ -58,6 +58,11 @@ public sealed class EventConfiguration : IEntityTypeConfiguration<Event>
             .HasFilter("deleted_at_utc IS NULL");
         builder.HasIndex(eventItem => eventItem.ImageId)
             .HasDatabaseName("ix_events_image_id");
+        // Byte-order collation, so a geohash prefix is a plain B-tree range scan.
+        builder.Property(eventItem => eventItem.Geohash).HasColumnName("geohash").HasMaxLength(12).UseCollation("C");
+        builder.HasIndex(eventItem => eventItem.Geohash)
+            .HasDatabaseName("ix_events_geohash")
+            .HasFilter("deleted_at_utc IS NULL");
         builder.HasIndex(eventItem => new { eventItem.Status, eventItem.StartAtUtc, eventItem.Id })
             .HasDatabaseName("ix_events_status_start_id")
             .HasFilter("deleted_at_utc IS NULL");

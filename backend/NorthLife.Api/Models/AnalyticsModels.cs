@@ -36,6 +36,23 @@ public sealed class EventPopularity
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }
 
+/// <summary>Estimated examination propensity of a feed position, relative to position 1.</summary>
+public sealed class PositionPropensityRow
+{
+    public short Surface { get; set; }
+    public short Position { get; set; }
+    /// <summary>θ_k / θ_1 after isotonic smoothing; the rollup uses this one.</summary>
+    public double Propensity { get; set; }
+
+    /// <summary>θ_k / θ_1 straight from expectation-maximisation.</summary>
+    public double RawPropensity { get; set; }
+
+    public double NaiveRatio { get; set; }
+    public int Impressions { get; set; }
+    public int Clicks { get; set; }
+    public DateTimeOffset EstimatedAtUtc { get; set; }
+}
+
 /// <summary>How far a background job has processed its input; moved in the same transaction as its output.</summary>
 public sealed class AnalyticsCheckpoint
 {

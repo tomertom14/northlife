@@ -11,6 +11,7 @@ export class TrackImpression {
   readonly eventId = input.required<string>({ alias: 'appTrackImpression' });
   readonly source = input<InteractionSource>('Feed', { alias: 'trackSource' });
   readonly position = input<number | undefined>(undefined, { alias: 'trackPosition' });
+  readonly context = input<string | undefined>(undefined, { alias: 'trackContext' });
 
   constructor() {
     const element = inject(ElementRef<HTMLElement>).nativeElement;
@@ -24,7 +25,7 @@ export class TrackImpression {
         ([entry]) => {
           if (entry?.isIntersecting) {
             dwell ??= setTimeout(() => {
-              analytics.track(this.eventId(), 'Impression', { source: this.source(), position: this.position() });
+              analytics.track(this.eventId(), 'Impression', { source: this.source(), position: this.position(), context: this.context() });
               observer.disconnect();
             }, DWELL_MS);
           } else {

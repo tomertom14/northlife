@@ -12,6 +12,14 @@ public sealed class PublicEventQueryParameters
     public decimal? MaxPrice { get; init; }
     public int Page { get; init; } = 1;
     public int PageSize { get; init; } = 20;
+
+    /// <summary>"time" (default), "hot" or "near".</summary>
+    public string? Sort { get; init; }
+
+    /// <summary>Visitor location for "near" and for the distance term of "hot"; never stored.</summary>
+    public double? Latitude { get; init; }
+
+    public double? Longitude { get; init; }
 }
 
 public sealed class EventFilterParameters

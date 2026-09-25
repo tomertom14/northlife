@@ -159,5 +159,6 @@ function readOrigin(state: unknown): TrackContext {
   const value = state as Partial<TrackContext> | undefined;
   if (!value?.source || !ORIGINS.has(value.source)) return { source: 'Direct' };
   const position = Number(value.position);
-  return { source: value.source, position: Number.isInteger(position) && position > 0 ? position : undefined };
+  const context = typeof value.context === 'string' ? value.context.slice(0, 160) : undefined;
+  return { source: value.source, position: Number.isInteger(position) && position > 0 ? position : undefined, context };
 }

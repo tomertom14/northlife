@@ -10,7 +10,7 @@ using System.IdentityModel.Tokens.Jwt;
 
 namespace NorthLife.Api.Controllers;
 
-public sealed record TrackInteractionRequest(Guid EventId, InteractionType Type, InteractionSource? Source, int? Position);
+public sealed record TrackInteractionRequest(Guid EventId, InteractionType Type, InteractionSource? Source, int? Position, string? Context = null);
 
 public sealed record TrackRequest(Guid VisitorId, IReadOnlyList<TrackInteractionRequest>? Interactions);
 
@@ -21,7 +21,8 @@ public sealed record ForgetVisitorRequest(Guid VisitorId);
 [ApiController]
 public sealed partial class AnalyticsController(
     AnalyticsIngestService ingest,
-    OwnerAnalyticsService analytics) : ControllerBase
+    OwnerAnalyticsService analytics,
+    Ranking.PositionBiasService positionBias) : ControllerBase
 {
     /// <summary>Batched interactions from the public site. Anonymous; rate-limited per client address.</summary>
     [HttpPost("api/analytics/events")]
@@ -44,7 +45,8 @@ public sealed partial class AnalyticsController(
                 interaction.EventId,
                 interaction.Type,
                 interaction.Source is { } source && Enum.IsDefined(source) ? source : InteractionSource.Direct,
-                interaction.Position))
+                interaction.Position,
+                interaction.Context))
             .ToList();
 
         // Crawlers that run scripts would otherwise count as visitors.
@@ -74,6 +76,12 @@ public sealed partial class AnalyticsController(
     [Authorize(Policy = AuthPolicies.AdminWithMfa)]
     public async Task<ActionResult<IReadOnlyList<TrafficAnomaly>>> Anomalies(CancellationToken cancellationToken) =>
         Ok(await analytics.AnomaliesAsync(cancellationToken));
+
+    /// <summary>The fitted examination propensity per feed position next to the naive click-through ratio.</summary>
+    [HttpGet("api/admin/analytics/position-bias")]
+    [Authorize(Policy = AuthPolicies.AdminWithMfa)]
+    public async Task<ActionResult<IReadOnlyList<PositionPropensityRow>>> PositionBias(CancellationToken cancellationToken) =>
+        Ok(await positionBias.CurrentAsync(cancellationToken));
 
     private static bool IsCrawler(string userAgent) => CrawlerPattern().IsMatch(userAgent);
 

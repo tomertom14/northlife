@@ -39,8 +39,11 @@ public sealed class AnalyticsRollupService(AppDbContext dbContext, AnalyticsMetr
 
     private const long RollupLockKey = 7_261_300;
 
-    /// <summary>Weight of one interaction in the popularity score. Phase 14 corrects feed clicks for position.</summary>
-    public Func<RawInteraction, double> Weight { get; set; } = interaction => InteractionWeights.Base(interaction.Type);
+    /// <summary>
+    /// Weight of one interaction in the popularity score. The worker sets it from the current
+    /// position-bias estimate (<see cref="Ranking.PopularityWeights"/>) before each run.
+    /// </summary>
+    public Func<RawInteraction, double> Weight { get; set; } = Ranking.PopularityWeights.With(Ranking.PropensityTable.Uniform);
 
     /// <summary>
     /// Processes everything up to (database now − lag). Only a capped window means there is more
@@ -82,7 +85,8 @@ public sealed class AnalyticsRollupService(AppDbContext dbContext, AnalyticsMetr
         var rows = await dbContext.Database.SqlQuery<InteractionRow>($"""
             SELECT interactions.event_id AS "EventId", interactions.visitor_id AS "VisitorId",
                    interactions.type AS "Type", interactions.source AS "Source",
-                   interactions.position AS "Position", interactions.occurred_at_utc AS "OccurredAtUtc"
+                   interactions.position AS "Position", interactions.occurred_at_utc AS "OccurredAtUtc",
+                   interactions.context_key AS "ContextKey"
             FROM interactions
             JOIN events ON events.id = interactions.event_id
             WHERE interactions.occurred_at_utc >= {start} AND interactions.occurred_at_utc < {end}
@@ -187,8 +191,9 @@ public sealed class AnalyticsRollupService(AppDbContext dbContext, AnalyticsMetr
         public short Source { get; set; }
         public short? Position { get; set; }
         public DateTimeOffset OccurredAtUtc { get; set; }
+        public int? ContextKey { get; set; }
 
         public RawInteraction ToRaw() =>
-            new(EventId, VisitorId, (InteractionType)Type, (InteractionSource)Source, Position, OccurredAtUtc);
+            new(EventId, VisitorId, (InteractionType)Type, (InteractionSource)Source, Position, OccurredAtUtc, ContextKey);
     }
 }

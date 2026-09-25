@@ -16,6 +16,8 @@ export class EventTimetable {
   readonly loading = input(false);
   /** Rows on earlier pages, so positions count from the top of the whole feed. */
   readonly rankOffset = input(0);
+  /** The list the rows belong to (filters and sort), sent with every interaction. */
+  readonly context = input<string>('');
 
   readonly labels = CATEGORY_LABELS;
   readonly colors = CATEGORY_COLORS;

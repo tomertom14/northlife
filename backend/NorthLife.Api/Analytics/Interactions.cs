@@ -37,14 +37,38 @@ public static class InteractionWeights
     };
 }
 
-/// <summary>One row of the raw <c>interactions</c> table.</summary>
+/// <summary>
+/// One row of the raw <c>interactions</c> table. <paramref name="ContextKey"/> identifies the list
+/// the visitor was looking at (its filters and sort), like the query in search click models.
+/// </summary>
 public sealed record RawInteraction(
     Guid EventId,
     Guid VisitorId,
     InteractionType Type,
     InteractionSource Source,
     short? Position,
-    DateTimeOffset OccurredAtUtc);
+    DateTimeOffset OccurredAtUtc,
+    int? ContextKey = null);
+
+public static class FeedContext
+{
+    public const int MaxLength = 160;
+
+    /// <summary>32-bit FNV-1a of the list description, so rows group by list without storing the text.</summary>
+    public static int? Key(string? context)
+    {
+        if (string.IsNullOrEmpty(context)) return null;
+        var hash = 2166136261u;
+        foreach (var value in System.Text.Encoding.UTF8.GetBytes(context.Length > MaxLength ? context[..MaxLength] : context))
+        {
+            hash ^= value;
+            hash *= 16777619u;
+        }
+
+        // 0 is reserved for "no list" in the ingestion batch.
+        return hash == 0 ? 1 : unchecked((int)hash);
+    }
+}
 
 public struct InteractionCounts
 {

@@ -3,7 +3,7 @@ using NorthLife.Api.Data;
 
 namespace NorthLife.Api.Analytics;
 
-public sealed record TrackedInteraction(Guid EventId, InteractionType Type, InteractionSource Source, int? Position);
+public sealed record TrackedInteraction(Guid EventId, InteractionType Type, InteractionSource Source, int? Position, string? Context = null);
 
 /// <summary>
 /// Stores interactions from the public site. Visitors are random ids the browser keeps; no account,
@@ -34,6 +34,8 @@ public sealed class AnalyticsIngestService(AppDbContext dbContext, AnalyticsMetr
         var types = batch.Select(interaction => (short)interaction.Type).ToArray();
         var sources = batch.Select(interaction => (short)interaction.Source).ToArray();
         var positions = batch.Select(interaction => (short)(interaction.Position is >= 1 and <= MaxPosition ? interaction.Position.Value : -1)).ToArray();
+        // 0 stands for "no list"; FeedContext never returns 0 for a real one.
+        var contexts = batch.Select(interaction => FeedContext.Key(interaction.Context) ?? 0).ToArray();
         var visitorKey = visitorId.ToString("N");
         var windowMinutes = (int)DeduplicationWindow.TotalMinutes;
 
@@ -41,9 +43,9 @@ public sealed class AnalyticsIngestService(AppDbContext dbContext, AnalyticsMetr
         // Batches of one visitor run one at a time, so two tabs cannot both pass the window check.
         await dbContext.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock(hashtextextended({visitorKey}, 13))", cancellationToken);
         var recorded = await dbContext.Database.ExecuteSqlAsync($"""
-            INSERT INTO interactions (event_id, visitor_id, type, source, position, occurred_at_utc)
-            SELECT batch.event_id, {visitorId}, batch.type, batch.source, NULLIF(batch.position, -1), now()
-            FROM unnest({eventIds}, {types}, {sources}, {positions}) AS batch(event_id, type, source, position)
+            INSERT INTO interactions (event_id, visitor_id, type, source, position, occurred_at_utc, context_key)
+            SELECT batch.event_id, {visitorId}, batch.type, batch.source, NULLIF(batch.position, -1), now(), NULLIF(batch.context_key, 0)
+            FROM unnest({eventIds}, {types}, {sources}, {positions}, {contexts}) AS batch(event_id, type, source, position, context_key)
             JOIN events ON events.id = batch.event_id
                 AND events.status = 'Published'
                 AND events.deleted_at_utc IS NULL

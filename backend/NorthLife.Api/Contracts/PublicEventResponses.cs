@@ -12,7 +12,8 @@ public sealed record EventSummaryResponse(
     decimal Price,
     EventCategory Category,
     string ImageUrl,
-    bool IsHighlighted);
+    bool IsHighlighted,
+    double? DistanceKm = null);
 
 public sealed record EventDetailsResponse(
     Guid Id,

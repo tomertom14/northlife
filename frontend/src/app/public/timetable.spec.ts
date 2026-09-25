@@ -1,5 +1,5 @@
 import { EventSummary } from './public-event.models';
-import { buildTimetable } from './timetable';
+import { buildRankedList, buildTimetable } from './timetable';
 
 function event(id: string, startAt: string, endAt: string): EventSummary {
   return {
@@ -61,5 +61,34 @@ describe('buildTimetable', () => {
     const groups = buildTimetable([event('later', '2026-09-26T09:00:00Z', '2026-09-26T12:00:00Z')], now, null);
 
     expect(groups[0].label).toContain('26');
+  });
+});
+
+describe('buildRankedList', () => {
+  const ranked = [
+    { ...event('far-later', '2026-09-24T17:00:00Z', '2026-09-24T20:00:00Z'), distanceKm: 12.4 },
+    { ...event('live', '2026-09-23T17:00:00Z', '2026-09-23T20:00:00Z'), distanceKm: 0.3 },
+    event('no-distance', '2026-09-23T19:00:00Z', '2026-09-23T22:00:00Z'),
+  ];
+
+  it('keeps the ranking order in one flat group with each row carrying its own day', () => {
+    const groups = buildRankedList(ranked, now, (km) => `${km} km`);
+    expect(groups.length).toBe(1);
+    expect(groups[0].label).toBeNull();
+    expect(groups[0].rows.map((row) => row.event.id)).toEqual(['far-later', 'live', 'no-distance']);
+    expect(groups[0].rows.map((row) => row.index)).toEqual([0, 1, 2]);
+    expect(groups[0].rows.every((row) => row.showTime)).toBe(true);
+    expect(groups[0].rows[0].time).toContain('20:00');
+  });
+
+  it('marks live rows and shows distances as notes', () => {
+    const [group] = buildRankedList(ranked, now, (km) => `${km} km`);
+    expect(group.rows[1]).toMatchObject({ state: 'live', note: '0.3 km' });
+    expect(group.rows[0].note).toBe('12.4 km');
+    expect(group.rows[2].note).toBe('');
+  });
+
+  it('returns nothing for an empty list', () => {
+    expect(buildRankedList([], now, (km) => `${km}`)).toEqual([]);
   });
 });

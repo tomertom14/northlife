@@ -1,13 +1,16 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { SkyState } from '../public/sky-state';
+import { GeoLocationService } from '../shared/geo-location';
 import { HomePage } from './home-page';
 
 describe('HomePage', () => {
-  function render(params: Record<string, string>) {
+  function render(params: Record<string, string>, location?: { latitude: number; longitude: number }) {
+    const geo = { location: signal(location ?? null), locate: () => (location ? Promise.resolve(location) : Promise.reject(new Error('denied'))) };
     TestBed.configureTestingModule({
       imports: [HomePage],
       providers: [
@@ -15,6 +18,7 @@ describe('HomePage', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { queryParamMap: of(convertToParamMap(params)) } },
+        { provide: GeoLocationService, useValue: geo },
       ],
     });
     const fixture = TestBed.createComponent(HomePage);
@@ -45,6 +49,27 @@ describe('HomePage', () => {
 
     http.expectNone((request) => request.url.startsWith('/api/events'));
     expect(fixture.componentInstance.statusLine()).toContain('בחרו');
+    http.verify();
+  });
+
+  it('asks for the hot ranking without a location until the visitor shares one', () => {
+    const { http } = render({ sort: 'hot' });
+
+    const feed = http.expectOne((request) => request.url === '/api/events');
+    expect(feed.request.params.get('sort')).toBe('hot');
+    expect(feed.request.params.has('latitude')).toBe(false);
+    http.expectOne((request) => request.url === '/api/events/top-picks');
+    http.verify();
+  });
+
+  it('sends the rounded location with a near-me link once it is known', () => {
+    const { http } = render({ sort: 'near' }, { latitude: 33.207, longitude: 35.57 });
+
+    const feed = http.expectOne((request) => request.url === '/api/events');
+    expect(feed.request.params.get('sort')).toBe('near');
+    expect(feed.request.params.get('latitude')).toBe('33.207');
+    expect(feed.request.params.get('longitude')).toBe('35.57');
+    http.expectOne((request) => request.url === '/api/events/top-picks');
     http.verify();
   });
 

@@ -110,7 +110,8 @@ Check 'the daily series has 7 zero-filled days ending today' ($analytics.daily.C
 Check 'the pending event is listed with no traffic' ((($analytics.events | Where-Object id -eq $eventC.id).impressions) -eq 0)
 Check 'another owner sees none of these numbers' ((Call GET '/api/manage/analytics?days=7' $null $other.Token).Json.totals.impressions -eq 0)
 Check 'anonymous callers cannot read owner analytics (401)' ((Call GET '/api/manage/analytics').Status -eq 401)
-$popularity = Sql "SELECT (SELECT log_score FROM event_popularity WHERE event_id = '$($eventA.id)') > (SELECT log_score FROM event_popularity WHERE event_id = '$($eventB.id)');"
+# Impressions add no popularity (phase 14), so an event with only impressions may have no row yet.
+$popularity = Sql "SELECT coalesce((SELECT log_score FROM event_popularity WHERE event_id = '$($eventA.id)'), '-Infinity') > coalesce((SELECT log_score FROM event_popularity WHERE event_id = '$($eventB.id)'), '-Infinity');"
 Check 'decayed popularity ranks the more engaging event higher' ($popularity -eq 't')
 
 Write-Host "`n== Reset my history"

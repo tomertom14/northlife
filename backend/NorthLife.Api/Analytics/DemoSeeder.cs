@@ -21,6 +21,7 @@ public sealed class DemoSeeder(
     AppDbContext dbContext,
     IImageStorage storage,
     AnalyticsRollupService rollup,
+    Ranking.PositionBiasService positionBias,
     IPasswordHasher<AppUser> passwordHasher,
     IConfiguration configuration,
     TimeProvider timeProvider)
@@ -140,7 +141,7 @@ public sealed class DemoSeeder(
             .Select(item => new SimulatedEvent(item.Id, item.Category, (double)item.Latitude, (double)item.Longitude, item.Price, item.StartAtUtc, item.IsHighlighted))
             .ToListAsync(cancellationToken);
         var homes = DemoCatalog.Localities.Select(locality => ((double)locality.Latitude, (double)locality.Longitude)).ToList();
-        var traffic = SyntheticTraffic.Generate(events, homes, until);
+        var traffic = SyntheticTraffic.Generate(events, homes, until, new SyntheticTrafficOptions { Visitors = 1500 });
         var rows = traffic.Interactions;
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
@@ -151,7 +152,7 @@ public sealed class DemoSeeder(
 
         var connection = (NpgsqlConnection)dbContext.Database.GetDbConnection();
         await using (var writer = await connection.BeginBinaryImportAsync(
-            "COPY interactions (event_id, visitor_id, type, source, position, occurred_at_utc) FROM STDIN (FORMAT BINARY)",
+"COPY interactions (event_id, visitor_id, type, source, position, occurred_at_utc, context_key) FROM STDIN (FORMAT BINARY)",
             cancellationToken))
         {
             foreach (var row in rows)
@@ -164,15 +165,96 @@ public sealed class DemoSeeder(
                 if (row.Position is { } position) await writer.WriteAsync(position, NpgsqlDbType.Smallint, cancellationToken);
                 else await writer.WriteNullAsync(cancellationToken);
                 await writer.WriteAsync(row.OccurredAtUtc, NpgsqlDbType.TimestampTz, cancellationToken);
+                if (row.ContextKey is { } context) await writer.WriteAsync(context, NpgsqlDbType.Integer, cancellationToken);
+                else await writer.WriteNullAsync(cancellationToken);
             }
 
             await writer.CompleteAsync(cancellationToken);
         }
 
+        // Fit the position bias on the simulated month first, so popularity credits clicks fairly.
+        var propensities = await positionBias.EstimateAsync(cancellationToken);
+        rollup.Weight = Ranking.PopularityWeights.With(new Ranking.PropensityTable(propensities.ToDictionary(row => row.Position, row => row.Propensity)));
         await rollup.ApplyBatchAsync(RollupAggregator.Aggregate(rows, rollup.Weight), until, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return rows;
+    }
+
+    /// <summary>
+    /// "--seed-load N": N extra published events over the next 30 days for performance tests, owned by
+    /// load@demo.northlife.local (removed by scripts/reset-demo-data.sql with the rest of the demo).
+    /// </summary>
+    public async Task<int> SeedLoadAsync(int count, CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+        var email = "load" + DemoCatalog.EmailDomain;
+        var owner = await dbContext.Users.SingleOrDefaultAsync(user => user.Email == email, cancellationToken);
+        if (owner is null)
+        {
+            owner = new AppUser
+            {
+                FullName = "בדיקת עומסים",
+                Email = email,
+                NormalizedEmail = email.ToUpperInvariant(),
+                PasswordHash = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)),
+                Phone = "0500000000",
+                BusinessName = "בדיקת עומסים",
+                Role = UserRole.BusinessOwner,
+                CreatedAtUtc = now,
+                EmailConfirmedAtUtc = now,
+            };
+            dbContext.Users.Add(owner);
+        }
+
+        const string key = "demo/load.webp";
+        var cover = RenderCover(DemoCatalog.CategoryColors[EventCategory.Other]);
+        if (!storage.Exists(key)) await storage.SaveAsync(key, new MemoryStream(cover), cancellationToken);
+        var image = new EventImage { UploaderId = owner.Id, StorageKey = key, ContentType = "image/webp", SizeBytes = cover.Length, CreatedAtUtc = now };
+        dbContext.EventImages.Add(image);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var random = new Random(77);
+        var today = JerusalemDays.Of(now);
+        for (var created = 0; created < count;)
+        {
+            for (var index = 0; index < 1000 && created < count; index++, created++)
+            {
+                var spec = DemoCatalog.Events[random.Next(DemoCatalog.Events.Length)];
+                var locality = DemoCatalog.Localities[random.Next(DemoCatalog.Localities.Length)];
+                var hours = DemoCatalog.StartHours(spec.Category);
+                var start = JerusalemDays.StartUtc(today.AddDays(random.Next(0, 30))).AddHours(hours[random.Next(hours.Length)]);
+                if (start <= now) start = start.AddDays(1);
+                var price = DemoCatalog.Price(spec.Category, random);
+                var venue = DemoCatalog.Venue(spec.Category, random);
+                dbContext.Events.Add(new Event
+                {
+                    OwnerId = owner.Id,
+                    ImageId = image.Id,
+                    Title = $"{spec.Title} #{created + 1}",
+                    Description = DemoCatalog.Description(spec, venue, locality, price),
+                    Category = spec.Category,
+                    VenueName = venue,
+                    Locality = locality.Name,
+                    Address = $"{venue}, {locality.Name}",
+                    Latitude = locality.Latitude + (decimal)((random.NextDouble() - 0.5) * 0.2),
+                    Longitude = locality.Longitude + (decimal)((random.NextDouble() - 0.5) * 0.2),
+                    StartAtUtc = start,
+                    EndAtUtc = start.AddHours(DemoCatalog.DurationHours(spec.Category, random)),
+                    Price = price,
+                    OrganizerName = owner.BusinessName,
+                    Tags = spec.Tags,
+                    Status = EventStatus.Published,
+                    CreatedAtUtc = now,
+                    UpdatedAtUtc = now,
+                });
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+            dbContext.ChangeTracker.Clear();
+        }
+
+        return count;
     }
 
     /// <summary>A soft two-tone cover in the category colour, so demo cards look like real ones.</summary>

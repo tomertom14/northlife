@@ -12,10 +12,16 @@
   [locality]="filters().locality"
   [maxPrice]="filters().maxPrice"
   [hasActiveFilters]="hasActiveFilters()"
+  [sort]="filters().sort ?? 'time'"
+  (sortChange)="setSort($event)"
   (categoryChange)="setCategory($event)"
   (localityChange)="setLocality($event)"
   (maxPriceChange)="setMaxPrice($event)"
   (clear)="clearFilters()" />
+
+@if (geoMessage()) {
+  <p class="geo-message" role="status">{{ geoMessage() }}</p>
+}
 
 @if (topPicks().length > 0) {
   <app-picks-rail [events]="topPicks()" />
@@ -58,7 +64,7 @@
       </div>
     </div>
   } @else {
-    <app-event-timetable [groups]="groups()" [rankOffset]="rankOffset()" />
+    <app-event-timetable [groups]="groups()" [rankOffset]="rankOffset()" [context]="trackContext()" />
 
     @if (totalPages() > 1) {
       <nav class="pagination" aria-label="עמודי תוצאות">

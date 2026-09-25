@@ -1,5 +1,5 @@
 import { EventSummary } from './public-event.models';
-import { addDaysToKey, formatLongDate, formatTime, jerusalemDateKey } from '../shared/jerusalem-time';
+import { addDaysToKey, formatLongDate, formatTime, jerusalemDateKey, relativeDay } from '../shared/jerusalem-time';
 
 export type TimetableState = 'live' | 'soon' | 'upcoming';
 
@@ -87,6 +87,34 @@ export function buildTimetable(
   }
 
   return groups;
+}
+
+/**
+ * One flat list for "hot" and "near me": the order is the ranking, so rows are not grouped by day and
+ * each row carries its own day and time, with the distance as a note when there is one.
+ */
+export function buildRankedList(
+  events: readonly EventSummary[],
+  now: Date,
+  distanceNote: (km: number) => string,
+): TimetableGroup[] {
+  if (events.length === 0) return [];
+  const rows: TimetableRow[] = events.map((event, index) => {
+    const start = new Date(event.startAt);
+    const end = new Date(event.endAt);
+    const live = start <= now && end > now;
+    const minutes = Math.round((start.getTime() - now.getTime()) / 60_000);
+    const soon = !live && minutes > 0 && minutes <= SOON_MINUTES;
+    return {
+      event,
+      index,
+      time: live ? 'עכשיו' : `${relativeDay(start, now)} ${formatTime(start)}`,
+      showTime: true,
+      note: event.distanceKm != null ? distanceNote(event.distanceKm) : live ? `עד ${formatTime(end)}` : '',
+      state: live ? 'live' : soon ? 'soon' : 'upcoming',
+    };
+  });
+  return [{ key: 'ranked', label: null, rows }];
 }
 
 function dayHeading(start: Date, dayKey: string, todayKey: string): string {

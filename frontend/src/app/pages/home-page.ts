@@ -10,14 +10,18 @@ import {
   EventCategory,
   EventPeriod,
   EventSummary,
+  FEED_SORTS,
+  FeedSort,
   PublicEventFilters,
+  formatDistance,
 } from '../public/public-event.models';
 import { PublicEventsApi } from '../public/public-events-api';
 import { DateRange, SkyHero } from '../public/sky-hero';
 import { skyForPeriod } from '../public/sky';
 import { SkyState } from '../public/sky-state';
-import { buildTimetable } from '../public/timetable';
+import { buildRankedList, buildTimetable } from '../public/timetable';
 import { Clock } from '../shared/clock';
+import { GeoLocationService } from '../shared/geo-location';
 import {
   addDaysToKey,
   formatDateKey,
@@ -41,6 +45,7 @@ export class HomePage implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly clock = inject(Clock);
+  private readonly geo = inject(GeoLocationService);
   readonly sky = inject(SkyState);
   private eventsRequest?: Subscription;
   private picksRequest?: Subscription;
@@ -51,6 +56,8 @@ export class HomePage implements OnInit {
   readonly totalCount = signal(0);
   readonly loading = signal(true);
   readonly failed = signal(false);
+  /** Why "near me" could not be used, shown under the filters. */
+  readonly geoMessage = signal('');
 
   readonly needsRange = computed(() => {
     const { period, from, to } = this.filters();
@@ -58,13 +65,29 @@ export class HomePage implements OnInit {
   });
   readonly totalPages = computed(() => Math.max(1, Math.ceil(this.totalCount() / PAGE_SIZE)));
   readonly rankOffset = computed(() => (this.filters().page - 1) * PAGE_SIZE);
+  /** Names the list for the click model: the same filters and sort are the same "query". */
+  readonly trackContext = computed(() => {
+    const filters = this.filters();
+    return [
+      filters.sort ?? 'time',
+      filters.period,
+      filters.from ?? '',
+      filters.to ?? '',
+      filters.category ?? '',
+      filters.locality ?? '',
+      filters.maxPrice ?? '',
+      `p${filters.page}`,
+    ].join('|');
+  });
   readonly hasActiveFilters = computed(() => {
     const { category, locality, maxPrice } = this.filters();
     return !!category || !!locality || maxPrice !== undefined;
   });
   readonly groups = computed(() => {
-    const period = this.filters().period;
+    const { period, sort } = this.filters();
     const now = this.clock.now();
+    // A ranked list is not in time order, so it is shown flat, each row with its own day.
+    if (sort === 'hot' || sort === 'near') return buildRankedList(this.events(), now, formatDistance);
     const today = jerusalemDateKey(now);
     const referenceDay =
       period === 'range' ? null : period === 'tomorrow' ? addDaysToKey(today, 1) : today;
@@ -132,6 +155,7 @@ export class HomePage implements OnInit {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       this.filters.set({
         period: readPeriod(params.get('period')),
+        sort: readSort(params.get('sort')),
         category: readCategory(params.get('category')),
         locality: params.get('locality')?.trim() || undefined,
         maxPrice: readPrice(params.get('maxPrice')),
@@ -152,6 +176,18 @@ export class HomePage implements OnInit {
     this.navigate({ ...this.filters(), period: 'range', from: range.from, to: range.to, page: 1 });
   }
 
+  setSort(sort: FeedSort): void {
+    this.geoMessage.set('');
+    if (sort !== 'near') {
+      this.navigate({ ...this.filters(), sort, page: 1 });
+      return;
+    }
+    this.geo.locate().then(
+      () => this.navigate({ ...this.filters(), sort, page: 1 }),
+      () => this.geoMessage.set('לא קיבלנו הרשאה למיקום, אז הסדר נשאר כמו שהיה. אפשר לאשר מיקום בהגדרות הדפדפן ולנסות שוב.'),
+    );
+  }
+
   setCategory(category: EventCategory | undefined): void {
     this.navigate({ ...this.filters(), category, page: 1 });
   }
@@ -165,8 +201,8 @@ export class HomePage implements OnInit {
   }
 
   clearFilters(): void {
-    const { period, from, to } = this.filters();
-    this.navigate({ ...this.defaults(), period, from, to });
+    const { period, from, to, sort } = this.filters();
+    this.navigate({ ...this.defaults(), period, from, to, sort });
   }
 
   goToPage(page: number): void {
@@ -193,8 +229,26 @@ export class HomePage implements OnInit {
       return;
     }
 
+    // A shared "near me" link: ask for this visitor's own location first.
+    if (filters.sort === 'near' && !this.geo.location()) {
+      this.loading.set(true);
+      this.geo.locate().then(
+        () => this.load(),
+        () => {
+          this.geoMessage.set('בלי הרשאה למיקום אי אפשר למיין לפי מרחק, אז מוצג הסדר הרגיל.');
+          this.navigate({ ...filters, sort: 'time' });
+        },
+      );
+      return;
+    }
+
+    // The location is sent only while the visitor uses it; "hot" also weighs distance then.
+    const location = this.geo.location();
+    const query: PublicEventFilters = location && filters.sort !== 'time'
+      ? { ...filters, latitude: location.latitude, longitude: location.longitude }
+      : filters;
     this.loading.set(true);
-    this.eventsRequest = this.api.getEvents(filters).subscribe({
+    this.eventsRequest = this.api.getEvents(query).subscribe({
       next: (response) => {
         this.events.set(response.items);
         this.totalCount.set(response.totalCount);
@@ -218,6 +272,7 @@ export class HomePage implements OnInit {
     void this.router.navigate(['/'], {
       queryParams: {
         period: filters.period === 'today' ? undefined : filters.period,
+        sort: filters.sort && filters.sort !== 'time' ? filters.sort : undefined,
         category: filters.category,
         locality: filters.locality || undefined,
         maxPrice: filters.maxPrice,
@@ -239,6 +294,10 @@ function countPhrase(count: number): string {
 
 function readPeriod(value: string | null): EventPeriod {
   return PERIODS.includes(value as EventPeriod) ? (value as EventPeriod) : 'today';
+}
+
+function readSort(value: string | null): FeedSort {
+  return FEED_SORTS.includes(value as FeedSort) ? (value as FeedSort) : 'time';
 }
 
 function readCategory(value: string | null): EventCategory | undefined {

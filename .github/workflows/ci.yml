@@ -198,6 +198,15 @@ jobs:
           demo_token=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/login --header 'Content-Type: application/json' --data '{"email":"owner1@demo.northlife.local","password":"DemoOwnerCi-2026"}' | jq -r '.token')
           curl --fail --silent 'http://127.0.0.1:5080/api/manage/analytics?days=30' --header "Authorization: Bearer $demo_token" | jq -e '.totals.impressions > 100 and .totals.uniqueVisitors > 10 and (.daily | length) == 30'
 
+          # Ranking: the hot and near-me sorts, geohashes in step with coordinates, the fitted position bias.
+          from=$(TZ=Asia/Jerusalem date +%Y-%m-%d)
+          to=$(TZ=Asia/Jerusalem date -d '+13 days' +%Y-%m-%d)
+          curl --fail --silent "http://127.0.0.1:5080/api/events?period=range&from=$from&to=$to&sort=hot&pageSize=12" | jq -e '(.items | length) == 12'
+          curl --fail --silent "http://127.0.0.1:5080/api/events?period=range&from=$from&to=$to&sort=near&latitude=33.2073&longitude=35.57&pageSize=12" | jq -e '[.items[].distanceKm] as $d | ($d | length) == 12 and $d == ($d | sort)'
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" 'http://127.0.0.1:5080/api/events?period=today&sort=near')" = "400"
+          test "$(PGPASSWORD=northlife_ci_only psql --host localhost --username northlife --dbname northlife --tuples-only --no-align --command "SELECT count(*) FROM events WHERE geohash <> geohash_encode(latitude::float8, longitude::float8, 9)")" = "0"
+          curl --fail --silent http://127.0.0.1:5080/api/admin/analytics/position-bias --header "Authorization: Bearer $admin_token" | jq -e 'length == 12 and .[0].propensity == 1'
+
           rejected_payload=$(echo "$event_payload" | jq '.title = "CI rejected event"')
           rejected_event=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/manage/events --header "Authorization: Bearer $token" --header 'Content-Type: application/json' --data "$rejected_payload")
           rejected_id=$(echo "$rejected_event" | jq -r '.id')

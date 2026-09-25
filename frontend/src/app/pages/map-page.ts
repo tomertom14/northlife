@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
+import { clusterEvents } from '../maps/clustering';
 import { MAP_ADAPTER, MapEventGroup } from '../maps/map-adapter';
 import { CATEGORY_COLORS, MapBounds, MapEvent, PublicConfiguration } from '../public/public-event.models';
 import { PublicEventsApi } from '../public/public-events-api';
@@ -34,6 +35,7 @@ export class MapPage implements AfterViewInit {
   private bounds: MapBounds = NORTH_DISTRICT;
   private pendingBounds?: MapBounds;
   private fitNextRender = true;
+  private zoom = 9;
 
   readonly events = signal<MapEvent[]>([]);
   readonly loading = signal(true);
@@ -113,7 +115,15 @@ export class MapPage implements AfterViewInit {
   private async renderMap(): Promise<void> {
     try {
       await this.adapter.render(this.mapHost().nativeElement, this.grouped(), this.config, {
-        boundsChanged: (bounds) => (this.pendingBounds = bounds),
+        boundsChanged: (bounds, zoom) => {
+          this.pendingBounds = bounds;
+          // Clusters depend on the zoom level: rebuild them, keeping the visitor's viewport.
+          if (zoom !== this.zoom) {
+            this.zoom = zoom;
+            this.fitNextRender = false;
+            void this.renderMap();
+          }
+        },
         openEvent: (eventId) => void this.router.navigate(['/events', eventId]),
         fitToMarkers: this.fitNextRender,
       });
@@ -123,13 +133,6 @@ export class MapPage implements AfterViewInit {
   }
 
   private grouped(): MapEventGroup[] {
-    const groups = new Map<string, MapEventGroup>();
-    for (const event of this.events()) {
-      const key = `${event.latitude.toFixed(6)},${event.longitude.toFixed(6)}`;
-      const group = groups.get(key) ?? { latitude: event.latitude, longitude: event.longitude, events: [] };
-      group.events.push(event);
-      groups.set(key, group);
-    }
-    return [...groups.values()];
+    return clusterEvents(this.events(), this.zoom);
   }
 }

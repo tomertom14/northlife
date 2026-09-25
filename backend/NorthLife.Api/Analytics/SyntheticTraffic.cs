@@ -39,6 +39,17 @@ public sealed record SyntheticTrafficOptions
 
     /// <summary>Add a sudden surge and a suspicious burst in the last complete hour, for the anomaly views.</summary>
     public bool IncludeBursts { get; init; } = true;
+
+    /// <summary>Share of visits that use the "hot now" sort.</summary>
+    public double HotShare { get; init; } = 0.3;
+
+    /// <summary>
+    /// Chance that a hot feed page shuffles its top <see cref="ExplorationDepth"/> (randomised top-N,
+    /// as the API does), which is what makes position bias identifiable.
+    /// </summary>
+    public double ExplorationRate { get; init; } = 0.2;
+
+    public int ExplorationDepth { get; init; } = 8;
 }
 
 public sealed record SyntheticTrafficResult(IReadOnlyList<RawInteraction> Interactions, IReadOnlyList<Persona> Personas, IReadOnlyDictionary<Guid, double> Appeal);
@@ -128,12 +139,12 @@ public static class SyntheticTraffic
         var recorded = new HashSet<(Guid, InteractionType, InteractionSource?)>();
         var clock = sessionStart;
 
-        void Record(SimulatedEvent item, InteractionType type, InteractionSource source, short? position)
+        void Record(SimulatedEvent item, InteractionType type, InteractionSource source, short? position, int? context = null)
         {
             clock = clock.AddSeconds(5 + random.Next(40));
             var surface = type == InteractionType.Impression ? source : (InteractionSource?)null;
             if (clock >= until || !recorded.Add((item.Id, type, surface))) return;
-            output.Add(new RawInteraction(item.Id, persona.VisitorId, type, source, position, clock));
+            output.Add(new RawInteraction(item.Id, persona.VisitorId, type, source, position, clock, context));
         }
 
         void AfterOpening(SimulatedEvent item, double relevance)
@@ -160,40 +171,54 @@ public static class SyntheticTraffic
             }
         }
 
-        // The feed, in one of several contexts that put the same event at different positions:
-        // everything coming up, one day's events, or a favourite category. That natural variation is
-        // what lets Phase 14 separate position bias from appeal without randomising real rankings.
+        // The feed in one of several lists: everything by time, one day, a favourite category, or
+        // "hot now". Each list is a context: the audience differs (category lists are read by fans),
+        // so click models fit appeal per context and event, like per query and document in search.
         var list = upcoming;
+        var contextName = "time|all";
         var context = random.NextDouble();
-        if (context < 0.3)
+        if (context < options.HotShare)
+        {
+            // Hot ordering: popularity follows appeal, with some noise.
+            list = upcoming.OrderByDescending(item => appeal[item.Id] + 0.3 * Normal(random)).ToList();
+            contextName = "hot|all";
+            if (random.NextDouble() < options.ExplorationRate) Ranking.Exploration.ShuffleTop(list, options.ExplorationDepth, random);
+        }
+        else if (context < options.HotShare + 0.25)
         {
             var favourite = WeightedIndex(persona.CategoryAffinity, random);
             var filtered = upcoming.Where(item => (int)item.Category == favourite).ToList();
-            if (filtered.Count > 0) list = filtered;
+            if (filtered.Count > 0)
+            {
+                list = filtered;
+                contextName = $"time|cat:{favourite}";
+            }
         }
-        else if (context < 0.6)
+        else if (context < options.HotShare + 0.5)
         {
             var days = upcoming.Select(item => JerusalemDays.Of(item.StartAtUtc)).Distinct().Take(10).ToList();
             var chosen = days[random.Next(days.Count)];
             list = upcoming.Where(item => JerusalemDays.Of(item.StartAtUtc) == chosen).ToList();
+            contextName = $"time|day:{chosen:yyyy-MM-dd}";
         }
 
         var roll = random.NextDouble();
         var page = roll < 0.6 ? 0 : roll < 0.9 ? 1 : 2;
         var offset = Math.Min(page * options.PageSize, Math.Max(0, list.Count - 1) / options.PageSize * options.PageSize);
+        var contextKey = FeedContext.Key($"{contextName}|p{offset / options.PageSize + 1}");
         for (var slot = 0; slot < options.PageSize && offset + slot < list.Count; slot++)
         {
             // Scroll on, or stop here.
             if (slot > 0 && random.NextDouble() > options.ScrollDepth) break;
             var item = list[offset + slot];
             var position = (short)(offset + slot + 1);
-            Record(item, InteractionType.Impression, InteractionSource.Feed, position);
+            Record(item, InteractionType.Impression, InteractionSource.Feed, position, contextKey);
 
             var attention = Math.Pow(position, -options.AttentionExponent);
             var relevance = Relevance(persona, item, appeal[item.Id]);
             if (random.NextDouble() < attention * relevance)
             {
-                Record(item, InteractionType.DetailView, InteractionSource.Feed, position);
+                Record(item, InteractionType.DetailView, InteractionSource.Feed, position, contextKey);
                 AfterOpening(item, relevance);
             }
         }
