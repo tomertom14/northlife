@@ -27,6 +27,10 @@ jobs:
       Email__PublicBaseUrl: http://127.0.0.1:5080
       RateLimiting__AuthPermitsPerMinute: "200"
       RateLimiting__EmailPermitsPer15Minutes: "50"
+      Analytics__RollupIntervalSeconds: "5"
+      Analytics__IngestLagSeconds: "5"
+      Metrics__AllowPrivateNetwork: "true"
+      Demo__OwnerPassword: DemoOwnerCi-2026
     services:
       mailpit:
         image: axllent/mailpit:v1.27
@@ -59,6 +63,7 @@ jobs:
       - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --seed-data
       - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --seed-data
       - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --bootstrap-admin
+      - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --seed-demo
       - name: Verify public API, authentication, and images
         shell: bash
         run: |
@@ -176,6 +181,22 @@ jobs:
           curl --fail --silent http://127.0.0.1:5080/api/events/$event_id | jq -e '.title == "CI owner event"'
           curl --fail --silent 'http://127.0.0.1:5080/api/admin/audit?pageSize=10' --header "Authorization: Bearer $admin_token" | jq -e --arg id "$owner_id" '[.items[] | select(.targetId == $id) | .action] | (index("user.suspended") != null) and (index("user.unsuspended") != null)'
           token=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/login --header 'Content-Type: application/json' --data '{"email":"ci-owner@example.com","password":"StrongPass123"}' | jq -r '.token')
+
+          # Analytics: batched interactions, the 30-minute deduplication window, the rollup worker and the owner report.
+          visitor=$(cat /proc/sys/kernel/random/uuid)
+          track=$(jq -n --arg v "$visitor" --arg e "$event_id" '{visitorId:$v, interactions:[{eventId:$e,type:"Impression",source:"Feed",position:1},{eventId:$e,type:"DetailView",source:"Feed",position:1},{eventId:$e,type:"Navigate",source:"Details"}]}')
+          curl --fail --silent --request POST http://127.0.0.1:5080/api/analytics/events --header 'Content-Type: application/json' --data "$track" | jq -e '.recorded == 3'
+          curl --fail --silent --request POST http://127.0.0.1:5080/api/analytics/events --header 'Content-Type: application/json' --data "$track" | jq -e '.recorded == 0'
+          for attempt in $(seq 1 40); do
+            views=$(curl --fail --silent 'http://127.0.0.1:5080/api/manage/analytics?days=7' --header "Authorization: Bearer $token" | jq '.totals.detailViews')
+            [ "$views" -ge 1 ] && break
+            sleep 1
+          done
+          curl --fail --silent 'http://127.0.0.1:5080/api/manage/analytics?days=7' --header "Authorization: Bearer $token" | jq -e --arg id "$event_id" '.totals.navigations >= 1 and .totals.uniqueVisitors >= 1 and (.events | any(.id == $id and .detailViews >= 1))'
+          curl --fail --silent http://127.0.0.1:5080/metrics | grep -q '^northlife_analytics_interactions_recorded_total'
+          # The demo seed rolled a simulated month up for its owners.
+          demo_token=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/login --header 'Content-Type: application/json' --data '{"email":"owner1@demo.northlife.local","password":"DemoOwnerCi-2026"}' | jq -r '.token')
+          curl --fail --silent 'http://127.0.0.1:5080/api/manage/analytics?days=30' --header "Authorization: Bearer $demo_token" | jq -e '.totals.impressions > 100 and .totals.uniqueVisitors > 10 and (.daily | length) == 30'
 
           rejected_payload=$(echo "$event_payload" | jq '.title = "CI rejected event"')
           rejected_event=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/manage/events --header "Authorization: Bearer $token" --header 'Content-Type: application/json' --data "$rejected_payload")

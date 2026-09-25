@@ -1,0 +1,119 @@
+<div class="analytics">
+  <a class="back" routerLink="/manage/dashboard">האירועים שלי</a>
+  <header class="page-head">
+    <h1>מי ראה את האירועים</h1>
+    <p class="lead">כמה אנשים ראו את האירועים שלכם באתר, נכנסו לפרטים ויצאו לדרך.</p>
+  </header>
+
+  <div class="filters" role="group" aria-label="טווח זמן">
+    @for (option of ranges; track option.days) {
+      <button type="button" class="range" [attr.aria-pressed]="range() === option.days" (click)="select(option.days)">
+        {{ option.label }}
+      </button>
+    }
+  </div>
+
+  @if (failed() && !data()) {
+    <p class="notice notice-error" role="alert">הנתונים לא נטענו. נסו שוב בעוד רגע.</p>
+  } @else if (loading() && !data()) {
+    <p class="muted" role="status">טוענים נתונים…</p>
+  } @else if (data(); as d) {
+    <div class="body" [class.refreshing]="loading()" [attr.aria-busy]="loading()">
+      <dl class="tiles">
+        @for (tile of tiles(); track tile.label) {
+          <div class="tile">
+            <dt>{{ tile.label }}</dt>
+            <dd>{{ tile.value }}</dd>
+            <dd class="note">{{ tile.note }}</dd>
+          </div>
+        }
+      </dl>
+
+      @if (!hasData()) {
+        <p class="notice">עוד אין צפיות בטווח הזה. כשאנשים יראו את האירועים שלכם בפיד, הנתונים יופיעו כאן תוך כשתי דקות.</p>
+      }
+
+      <section class="card" aria-labelledby="trend-title">
+        <h2 id="trend-title">צפיות ומבקרים לפי יום</h2>
+        <app-line-chart [labels]="labels()" [tickLabels]="tickLabels()" [series]="series()" [ariaLabel]="chartLabel()" />
+        <details class="table-view">
+          <summary>הצגת הנתונים כטבלה</summary>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th scope="col">יום</th><th scope="col">הופעות</th><th scope="col">צפיות</th><th scope="col">מבקרים ייחודיים</th><th scope="col">ניווטים</th></tr>
+              </thead>
+              <tbody>
+                @for (day of d.daily; track day.day) {
+                  <tr>
+                    <th scope="row">{{ dayLabel(day.day) }}</th>
+                    <td>{{ whole(day.impressions) }}</td>
+                    <td>{{ whole(day.detailViews) }}</td>
+                    <td>{{ whole(day.uniqueVisitors) }}</td>
+                    <td>{{ whole(day.navigations) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </section>
+
+      <section class="card" aria-labelledby="funnel-title">
+        <h2 id="funnel-title">מהופעה ועד יציאה לדרך</h2>
+        <app-funnel-chart [stages]="funnel()" />
+      </section>
+
+      <section class="card" aria-labelledby="events-title">
+        <h2 id="events-title">השוואה בין האירועים</h2>
+        @if (events().length === 0) {
+          <p class="muted">עוד לא פרסמתם אירועים.</p>
+        } @else {
+          <div class="table-wrap">
+            <table class="events">
+              <thead>
+                <tr>
+                  <th scope="col">אירוע</th>
+                  <th scope="col">הופעות</th>
+                  <th scope="col">צפיות</th>
+                  <th scope="col">שיעור הקלקה</th>
+                  <th scope="col">ניווטים</th>
+                  <th scope="col">מבקרים ייחודיים</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (event of events(); track event.id) {
+                  <tr>
+                    <th scope="row">
+                      <span class="event-title">{{ event.title }}</span>
+                      <span class="event-meta">
+                        {{ date(event.startAt) }}
+                        <app-status-badge [status]="event.status" />
+                        @if (event.trending) {
+                          <span class="trending">
+                            <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 11.5l4-4 3 3 5-5M10 5.5h4v4" /></svg>
+                            ממריא עכשיו
+                          </span>
+                        }
+                      </span>
+                    </th>
+                    <td>{{ whole(event.impressions) }}</td>
+                    <td>{{ whole(event.detailViews) }}</td>
+                    <td>{{ percent(event.clickThroughRate) }}</td>
+                    <td>{{ whole(event.navigations) }}</td>
+                    <td>{{ whole(event.uniqueVisitors) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+
+      <p class="footnote">
+        הנתונים מתעדכנים כל כשתי דקות. כל מבקר נספר פעם אחת לכל סוג פעולה בחצי שעה, ומבקרים ייחודיים מחושבים בהערכה סטטיסטית
+        (HyperLogLog) בדיוק של כאחוז, כך שמי שחזר בכמה ימים או ראה כמה אירועים שלכם נספר פעם אחת.
+      </p>
+    </div>
+  }
+</div>

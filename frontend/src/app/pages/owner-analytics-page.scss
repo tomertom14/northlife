@@ -1,0 +1,234 @@
+:host {
+  display: block;
+}
+
+.analytics {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.back {
+  color: var(--muted);
+  font-weight: 600;
+  justify-self: start;
+}
+
+.back::before {
+  content: '\2192\00a0';
+}
+
+.back:hover {
+  color: var(--ink);
+}
+
+.page-head {
+  display: grid;
+  gap: 0.35rem;
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 8vw, 4.5rem);
+  font-weight: 700;
+  line-height: 0.9;
+  margin: 0;
+}
+
+h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.lead,
+.muted {
+  color: var(--muted);
+  margin: 0;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.range {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.4rem 0.95rem;
+}
+
+.range[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+
+.body {
+  display: grid;
+  gap: 1.25rem;
+  transition: opacity 150ms ease;
+}
+
+.body.refreshing {
+  opacity: 0.55;
+}
+
+.tiles {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  margin: 0;
+}
+
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.1rem;
+}
+
+.tile dt {
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.tile dd {
+  font-size: 2.25rem;
+  font-weight: 600;
+  line-height: 1.15;
+  margin: 0.35rem 0 0;
+}
+
+.tile dd.note {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  margin-top: 0.15rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: clamp(1rem, 4vw, 1.5rem);
+}
+
+.table-view summary {
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+table {
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  margin-top: 0.75rem;
+  min-width: 100%;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.55rem 0.6rem;
+  text-align: start;
+  white-space: nowrap;
+}
+
+thead th {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+td {
+  font-variant-numeric: tabular-nums;
+}
+
+tbody th {
+  font-weight: 500;
+}
+
+.events tbody th {
+  white-space: normal;
+}
+
+.event-title {
+  display: block;
+  font-weight: 600;
+  min-width: 10rem;
+}
+
+.event-meta {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+  gap: 0.25rem 0.75rem;
+  margin-top: 0.2rem;
+}
+
+.trending {
+  align-items: center;
+  color: var(--ink);
+  display: inline-flex;
+  font-weight: 600;
+  gap: 0.3rem;
+}
+
+.trending svg {
+  fill: none;
+  height: 1rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  width: 1rem;
+}
+
+.footnote {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  margin: 0;
+  max-width: 70ch;
+}
+
+@media (max-width: 40rem) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* The event name stays in view while the numbers scroll sideways. */
+  .events thead th:first-child,
+  .events tbody th {
+    background: var(--surface);
+    inset-inline-start: 0;
+    position: sticky;
+    z-index: 1;
+  }
+
+  .event-title {
+    min-width: 8.5rem;
+  }
+
+  .tile dd {
+    font-size: 1.75rem;
+  }
+}

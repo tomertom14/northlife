@@ -4,6 +4,7 @@ import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
+import { AnalyticsService, TrackContext } from '../analytics/analytics';
 import { EventImage } from '../public/event-image';
 import {
   CATEGORY_COLORS,
@@ -35,8 +36,11 @@ export class EventDetailsPage {
   private readonly title = inject(Title);
   private readonly history = inject(NavigationHistory);
   private readonly clock = inject(Clock);
+  private readonly analytics = inject(AnalyticsService);
   private request?: Subscription;
   private eventId = '';
+  /** Where the visitor clicked to get here (feed position, picks rail, map), from the router state. */
+  private origin: TrackContext = { source: 'Direct' };
 
   readonly event = signal<EventDetails | null>(null);
   readonly loading = signal(true);
@@ -64,6 +68,7 @@ export class EventDetailsPage {
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe((params) => {
       this.eventId = params.get('id') ?? '';
+      this.origin = readOrigin(this.router.currentNavigation()?.extras.state);
       this.load();
     });
   }
@@ -85,7 +90,12 @@ export class EventDetailsPage {
     return `https://www.google.com/maps/dir/?api=1&destination=${item.latitude},${item.longitude}`;
   }
 
+  trackNavigation(item: EventDetails): void {
+    this.analytics.track(item.id, 'Navigate', { source: 'Details' });
+  }
+
   async share(item: EventDetails): Promise<void> {
+    this.analytics.track(item.id, 'Share', { source: 'Details' });
     const url = window.location.href;
     if (typeof navigator.share === 'function') {
       try {
@@ -120,6 +130,7 @@ export class EventDetailsPage {
         this.event.set(item);
         this.loading.set(false);
         this.title.setTitle(`${item.title} | NorthLife`);
+        this.analytics.track(item.id, 'DetailView', this.origin);
       },
       error: (error: { status?: number }) => {
         this.event.set(null);
@@ -140,4 +151,13 @@ function describeTimes(startAt: string, endAt: string): { date: string; hours: s
   if (startKey === endKey) return { date, hours: `${start} עד ${end}` };
   if (endKey === addDaysToKey(startKey, 1)) return { date, hours: `${start} עד ${end} למחרת` };
   return { date, hours: `${start} עד ${formatLongDate(endAt)}, ${end}` };
+}
+
+const ORIGINS = new Set(['Feed', 'Picks', 'Map', 'Recommendations', 'Similar']);
+
+function readOrigin(state: unknown): TrackContext {
+  const value = state as Partial<TrackContext> | undefined;
+  if (!value?.source || !ORIGINS.has(value.source)) return { source: 'Direct' };
+  const position = Number(value.position);
+  return { source: value.source, position: Number.isInteger(position) && position > 0 ? position : undefined };
 }

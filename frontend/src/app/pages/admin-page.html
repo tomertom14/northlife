@@ -12,6 +12,29 @@
   </header>
   <app-admin-nav />
 
+  @if (anomalies().length > 0) {
+    <section class="anomalies" aria-labelledby="anomalies-title">
+      <h2 id="anomalies-title">תנועה חריגה בשעה האחרונה</h2>
+      <ul>
+        @for (anomaly of anomalies(); track anomaly.eventId) {
+          <li>
+            <span class="anomaly-kind" [class.suspicious]="anomaly.kind === 'suspicious'">
+              @if (anomaly.kind === 'suspicious') {
+                <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 1.8l6.6 11.7H1.4z" /><path class="mark" d="M8 6v3.6M8 11.4v.2" /></svg>
+                חשד לתנועה אוטומטית
+              } @else {
+                <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="mark" d="M2 11.5l4-4 3 3 5-5M10 5.5h4v4" /></svg>
+                עלייה חדה
+              }
+            </span>
+            <a [routerLink]="['/events', anomaly.eventId]">{{ anomaly.title }}</a>
+            <span class="muted">{{ anomaly.businessName }}: {{ anomaly.observed }} צפיות בשעה, לעומת כ־{{ anomaly.baseline }} בדרך כלל</span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
   <app-stat-tiles [tiles]="tiles()" label="מצב האירועים במערכת" />
 
   <div id="event-form-anchor" class="form-anchor">

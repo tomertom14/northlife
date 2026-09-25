@@ -67,6 +67,12 @@ export const routes: Routes = [
         title: 'האירועים שלי | NorthLife',
       },
       {
+        path: 'analytics',
+        loadComponent: () => import('./pages/owner-analytics-page').then((m) => m.OwnerAnalyticsPage),
+        canActivate: [authGuard],
+        title: 'צפיות ונתונים | NorthLife',
+      },
+      {
         path: 'admin',
         loadComponent: () => import('./pages/admin-page').then((m) => m.AdminPage),
         canActivate: [adminGuard],

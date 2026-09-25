@@ -1,0 +1,15 @@
+# Scrapes the API for system health: traffic, latency, errors, database and the analytics jobs.
+# Business numbers per event live in PostgreSQL; labels here stay low-cardinality on purpose.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: northlife-api
+    metrics_path: /metrics
+    static_configs:
+      # The production image started by scripts or `docker run` on the compose network, and
+      # `dotnet run` on the host. Whichever is not running shows as down.
+      - targets:
+          - northlife-app:10000
+          - host.docker.internal:5080

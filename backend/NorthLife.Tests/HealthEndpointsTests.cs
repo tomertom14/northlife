@@ -49,6 +49,8 @@ public sealed class NorthLifeApiFactory : WebApplicationFactory<Program>
         builder.UseSetting(
             "Authentication:JwtKey",
             "northlife-tests-only-signing-key-32-bytes");
+        // The rollup worker needs PostgreSQL; database-backed analytics run in the Docker end-to-end suite.
+        builder.UseSetting("Analytics:WorkerEnabled", "false");
         builder.ConfigureTestServices(services =>
             services.AddSingleton<NorthLife.Api.Authentication.ISessionValidator>(new FakeSessionValidator(RevokedUsers)));
     }

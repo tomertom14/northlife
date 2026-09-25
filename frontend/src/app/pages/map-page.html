@@ -42,7 +42,7 @@
           <li class="row">
             <span class="time">{{ time(event.startAt) }}</span>
             <span class="text">
-              <a class="title" [routerLink]="['/events', event.id]">{{ event.title }}</a>
+              <a class="title" [routerLink]="['/events', event.id]" [state]="{ source: 'Map' }">{{ event.title }}</a>
               <span class="place"><span class="cat-dot" [style.--dot]="colors[event.category]"></span>{{ event.venueName }}, {{ event.address }}, {{ event.locality }}</span>
             </span>
             <a class="btn navigate" [href]="navigationUrl(event)" target="_blank" rel="noopener">ניווט</a>

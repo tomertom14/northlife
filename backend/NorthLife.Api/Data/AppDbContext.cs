@@ -12,6 +12,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<ExternalLogin> ExternalLogins => Set<ExternalLogin>();
     public DbSet<RecoveryCode> RecoveryCodes => Set<RecoveryCode>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+    public DbSet<EventStatsHourly> EventStatsHourly => Set<EventStatsHourly>();
+    public DbSet<EventStatsDaily> EventStatsDaily => Set<EventStatsDaily>();
+    public DbSet<EventPopularity> EventPopularity => Set<EventPopularity>();
+    public DbSet<AnalyticsCheckpoint> AnalyticsCheckpoints => Set<AnalyticsCheckpoint>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

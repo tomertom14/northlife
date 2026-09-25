@@ -25,3 +25,18 @@
 <main #main id="main" tabindex="-1">
   <router-outlet />
 </main>
+
+<footer class="site-footer">
+  <p>
+    כדי להראות לעסקים כמה אנשים ראו את האירועים שלהם ולהמליץ לכם על אירועים, אנחנו סופרים צפיות באופן אנונימי,
+    עם מזהה אקראי שנשמר רק בדפדפן הזה. בלי שם, בלי כתובת ובלי חשבון.
+  </p>
+  @if (analytics.enabled) {
+    <button type="button" class="reset" [disabled]="resetting()" (click)="resetHistory()">איפוס ההיסטוריה שלי</button>
+  } @else {
+    <p>הדפדפן שלכם שולח בקשת פרטיות (Global Privacy Control), ולכן אנחנו לא סופרים את הצפיות שלכם.</p>
+  }
+  @if (resetDone()) {
+    <p role="status">ההיסטוריה נמחקה. מעכשיו תקבלו מזהה חדש.</p>
+  }
+</footer>

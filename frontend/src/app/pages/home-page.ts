@@ -57,6 +57,7 @@ export class HomePage implements OnInit {
     return period === 'range' && (!from || !to);
   });
   readonly totalPages = computed(() => Math.max(1, Math.ceil(this.totalCount() / PAGE_SIZE)));
+  readonly rankOffset = computed(() => (this.filters().page - 1) * PAGE_SIZE);
   readonly hasActiveFilters = computed(() => {
     const { category, locality, maxPrice } = this.filters();
     return !!category || !!locality || maxPrice !== undefined;

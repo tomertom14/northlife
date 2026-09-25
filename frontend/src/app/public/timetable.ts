@@ -5,6 +5,8 @@ export type TimetableState = 'live' | 'soon' | 'upcoming';
 
 export interface TimetableRow {
   event: EventSummary;
+  /** Position of the event in the list the timetable was built from, starting at 0. */
+  index: number;
   /** "20:00", or "עכשיו" for an event that is running. */
   time: string;
   /** False when the row above shows the same time, so the column reads as a schedule. */
@@ -46,7 +48,7 @@ export function buildTimetable(
     return group;
   };
 
-  for (const event of events) {
+  for (const [index, event] of events.entries()) {
     const start = new Date(event.startAt);
     const end = new Date(event.endAt);
 
@@ -54,6 +56,7 @@ export function buildTimetable(
       current ??= open('now', null);
       current.rows.push({
         event,
+        index,
         time: 'עכשיו',
         showTime: previousTime !== 'עכשיו',
         note: `עד ${formatTime(end)}`,
@@ -74,6 +77,7 @@ export function buildTimetable(
     const soon = minutes > 0 && minutes <= SOON_MINUTES;
     current.rows.push({
       event,
+      index,
       time,
       showTime: time !== previousTime,
       note: soon ? `בעוד ${minutes} דק׳` : '',

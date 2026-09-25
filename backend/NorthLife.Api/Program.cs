@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.DataProtection;
+using NorthLife.Api.Analytics;
 using NorthLife.Api.Authentication;
 using NorthLife.Api.Data;
 using NorthLife.Api.Email;
@@ -18,6 +19,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using System.Diagnostics;
+using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -88,6 +90,18 @@ builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ISessionValidator, SessionValidator>();
 builder.Services.AddScoped<AuditLog>();
 builder.Services.AddScoped<AdminUserService>();
+
+builder.Services.Configure<AnalyticsOptions>(builder.Configuration.GetSection(AnalyticsOptions.SectionName));
+builder.Services.AddSingleton<AnalyticsMetrics>();
+builder.Services.AddScoped<AnalyticsIngestService>();
+builder.Services.AddScoped<AnalyticsRollupService>();
+builder.Services.AddScoped<OwnerAnalyticsService>();
+builder.Services.AddScoped<DemoSeeder>();
+if (builder.Configuration.GetValue($"{AnalyticsOptions.SectionName}:WorkerEnabled", true))
+{
+    builder.Services.AddHostedService<AnalyticsWorker>();
+}
+builder.Services.Configure<MetricsAccessOptions>(builder.Configuration.GetSection(MetricsAccessOptions.SectionName));
 
 // Data Protection encrypts TOTP secrets and sign-in tickets. Keys must survive restarts and deploys.
 var dataProtection = builder.Services.AddDataProtection().SetApplicationName("NorthLife");
@@ -201,6 +215,7 @@ builder.Services.AddAuthorizationBuilder()
 
 var authPermitsPerMinute = builder.Configuration.GetValue("RateLimiting:AuthPermitsPerMinute", 10);
 var emailPermitsPerWindow = builder.Configuration.GetValue("RateLimiting:EmailPermitsPer15Minutes", 5);
+var analyticsPermitsPerMinute = builder.Configuration.GetValue("RateLimiting:AnalyticsPermitsPerMinute", 120);
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -222,6 +237,17 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = emailPermitsPerWindow,
                 Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            }));
+    // Browsers send a batch every few seconds at most; this leaves room for several tabs behind one address.
+    options.AddPolicy("analytics", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = analyticsPermitsPerMinute,
+                Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
             }));
@@ -268,6 +294,25 @@ if (args.Contains("--seed-data", StringComparer.OrdinalIgnoreCase))
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await dbContext.Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<DevelopmentDataSeeder>().SeedAsync();
+    return;
+}
+
+if (args.Contains("--seed-demo", StringComparer.OrdinalIgnoreCase))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+    var result = await scope.ServiceProvider.GetRequiredService<DemoSeeder>().SeedAsync(CancellationToken.None);
+    if (result is null)
+    {
+        app.Logger.LogInformation("Demo data already present; nothing to do.");
+    }
+    else
+    {
+        app.Logger.LogInformation(
+            "Demo data: {Owners} owners (owner1..owner{Owners}@demo.northlife.local, password {Password}), {Events} events, {Interactions} simulated interactions from {Visitors} visitors.",
+            result.Owners, result.Owners, result.OwnerPassword, result.Events, result.Interactions, result.Visitors);
+    }
+
     return;
 }
 
@@ -325,8 +370,18 @@ app.UseStaticFiles();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseHttpMetrics();
+app.UseWhen(
+    context => context.Request.Path.StartsWithSegments("/metrics"),
+    branch => branch.Use(async (context, next) =>
+    {
+        // Operational metrics are not public: a bearer token, or a private network when allowed.
+        if (MetricsAccess.IsAllowed(context, context.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<MetricsAccessOptions>>().Value)) await next();
+        else context.Response.StatusCode = StatusCodes.Status404NotFound;
+    }));
 
 app.MapControllers();
+app.MapMetrics("/metrics");
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
     Predicate = _ => false,

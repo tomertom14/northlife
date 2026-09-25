@@ -53,8 +53,8 @@
             </div>
           </dl>
           <div class="actions">
-            <a class="btn btn-primary" [href]="wazeUrl(item)" target="_blank" rel="noopener">ניווט עם Waze</a>
-            <a class="btn" [href]="googleMapsUrl(item)" target="_blank" rel="noopener">ניווט עם Google Maps</a>
+            <a class="btn btn-primary" [href]="wazeUrl(item)" target="_blank" rel="noopener" (click)="trackNavigation(item)">ניווט עם Waze</a>
+            <a class="btn" [href]="googleMapsUrl(item)" target="_blank" rel="noopener" (click)="trackNavigation(item)">ניווט עם Google Maps</a>
             <button type="button" class="btn btn-quiet" (click)="share(item)">שיתוף האירוע</button>
           </div>
           @if (shareMessage()) {

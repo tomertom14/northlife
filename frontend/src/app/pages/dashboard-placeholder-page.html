@@ -6,6 +6,7 @@
     </div>
     <div class="head-actions">
       <button type="button" class="btn btn-primary" (click)="startCreate()">אירוע חדש</button>
+      <a class="btn" routerLink="/manage/analytics">צפיות ונתונים</a>
       <a class="btn btn-quiet" routerLink="/manage/security">אבטחת החשבון</a>
       <button type="button" class="btn btn-quiet" [disabled]="loggingOut()" (click)="logout()">התנתקות</button>
     </div>

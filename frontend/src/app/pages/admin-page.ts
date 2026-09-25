@@ -10,6 +10,7 @@ import { AdminNav } from '../manage/admin-nav';
 import { EventForm } from '../manage/event-form';
 import { StatTile, StatTiles } from '../manage/stat-tiles';
 import { StatusBadge } from '../manage/status-badge';
+import { OwnerAnalyticsApi, TrafficAnomaly } from '../owner/owner-analytics-api';
 import { OwnerEventInput, OwnerEventStatus } from '../owner/owner-events-api';
 import { Clock } from '../shared/clock';
 import { formatLongDate, formatTime } from '../shared/jerusalem-time';
@@ -24,6 +25,7 @@ import { ToastService } from '../shared/toast';
 })
 export class AdminPage implements OnInit {
   private readonly api = inject(AdminEventsApi);
+  private readonly analytics = inject(OwnerAnalyticsApi);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   private readonly clock = inject(Clock);
@@ -31,6 +33,7 @@ export class AdminPage implements OnInit {
   readonly auth = inject(AuthStore);
 
   readonly events = signal<AdminEvent[]>([]);
+  readonly anomalies = signal<TrafficAnomaly[]>([]);
   readonly overview = signal<AdminEvent[]>([]);
   readonly loading = signal(true);
   readonly loadFailed = signal(false);
@@ -63,6 +66,7 @@ export class AdminPage implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    this.analytics.anomalies().subscribe({ next: (anomalies) => this.anomalies.set(anomalies), error: () => undefined });
   }
 
   load(): void {

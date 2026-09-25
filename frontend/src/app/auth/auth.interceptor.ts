@@ -8,9 +8,11 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const auth = inject(AuthStore);
   const router = inject(Router);
   const token = auth.token();
+  // Anonymous analytics never carry the session, so a visitor id cannot be tied to an account.
   const isAnonymousAuthCall =
     request.url.endsWith('/api/auth/login') ||
-    request.url.endsWith('/api/auth/register');
+    request.url.endsWith('/api/auth/register') ||
+    request.url.startsWith('/api/analytics/');
 
   if (!token || isAnonymousAuthCall || !request.url.startsWith('/api/')) {
     return next(request);
