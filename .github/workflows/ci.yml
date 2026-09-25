@@ -207,6 +207,15 @@ jobs:
           test "$(PGPASSWORD=northlife_ci_only psql --host localhost --username northlife --dbname northlife --tuples-only --no-align --command "SELECT count(*) FROM events WHERE geohash <> geohash_encode(latitude::float8, longitude::float8, 9)")" = "0"
           curl --fail --silent http://127.0.0.1:5080/api/admin/analytics/position-bias --header "Authorization: Bearer $admin_token" | jq -e 'length == 12 and .[0].propensity == 1'
 
+          # Recommendations: popular picks for a new visitor, personal ones right after an interaction, similar events.
+          reco_visitor=$(cat /proc/sys/kernel/random/uuid)
+          curl --fail --silent "http://127.0.0.1:5080/api/recommendations?visitorId=$reco_visitor&limit=5" | jq -e '.personalised == false and (.items | length) == 5'
+          first_event=$(curl --fail --silent "http://127.0.0.1:5080/api/events?period=range&from=$from&to=$to&pageSize=1" | jq -r '.items[0].id')
+          curl --fail --silent --request POST http://127.0.0.1:5080/api/analytics/events --header 'Content-Type: application/json' --data "{\"visitorId\":\"$reco_visitor\",\"interactions\":[{\"eventId\":\"$first_event\",\"type\":\"DetailView\",\"source\":\"Feed\",\"position\":1}]}" | jq -e '.recorded == 1'
+          curl --fail --silent "http://127.0.0.1:5080/api/recommendations?visitorId=$reco_visitor&limit=5" | jq -e --arg id "$first_event" '.personalised == true and all(.items[]; .event.id != $id)'
+          curl --fail --silent "http://127.0.0.1:5080/api/events/$first_event/similar" | jq -e --arg id "$first_event" 'length >= 1 and all(.[]; .id != $id)'
+          dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --evaluate-recommendations evaluation.md | grep -q 'Oracle'
+
           rejected_payload=$(echo "$event_payload" | jq '.title = "CI rejected event"')
           rejected_event=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/manage/events --header "Authorization: Bearer $token" --header 'Content-Type: application/json' --data "$rejected_payload")
           rejected_id=$(echo "$rejected_event" | jq -r '.id')

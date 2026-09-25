@@ -4,7 +4,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
 import { EventTimetable } from '../public/event-timetable';
 import { FilterBar } from '../public/filter-bar';
+import { AnalyticsService } from '../analytics/analytics';
+import { ForYouRail } from '../public/for-you-rail';
 import { PicksRail } from '../public/picks-rail';
+import { RecommendationItem, RecommendationsApi } from '../recommendations/recommendations-api';
 import {
   EVENT_CATEGORIES,
   EventCategory,
@@ -35,7 +38,7 @@ const PERIODS: EventPeriod[] = ['now', 'today', 'tonight', 'tomorrow', 'range'];
 
 @Component({
   selector: 'app-home-page',
-  imports: [SkyHero, FilterBar, PicksRail, EventTimetable],
+  imports: [SkyHero, FilterBar, ForYouRail, PicksRail, EventTimetable],
   templateUrl: './home-page.html',
   styleUrl: './home-page.scss',
 })
@@ -46,6 +49,9 @@ export class HomePage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly clock = inject(Clock);
   private readonly geo = inject(GeoLocationService);
+  private readonly recommendations = inject(RecommendationsApi);
+  private readonly analytics = inject(AnalyticsService);
+  private recommendationsRequest?: Subscription;
   readonly sky = inject(SkyState);
   private eventsRequest?: Subscription;
   private picksRequest?: Subscription;
@@ -53,6 +59,8 @@ export class HomePage implements OnInit {
   readonly filters = signal<PublicEventFilters>(this.defaults());
   readonly events = signal<EventSummary[]>([]);
   readonly topPicks = signal<EventSummary[]>([]);
+  /** Personal picks; empty (and hidden) until the visitor has some history. */
+  readonly forYou = signal<RecommendationItem[]>([]);
   readonly totalCount = signal(0);
   readonly loading = signal(true);
   readonly failed = signal(false);
@@ -265,6 +273,13 @@ export class HomePage implements OnInit {
     this.picksRequest = this.api.getTopPicks(filters).subscribe({
       next: (events) => this.topPicks.set(events),
       error: () => this.topPicks.set([]),
+    });
+
+    this.recommendationsRequest?.unsubscribe();
+    const visitorId = this.analytics.enabled ? this.analytics.visitorId() : null;
+    this.recommendationsRequest = this.recommendations.forYou(visitorId, filters, 10).subscribe({
+      next: (result) => this.forYou.set(result.personalised ? result.items : []),
+      error: () => this.forYou.set([]),
     });
   }
 

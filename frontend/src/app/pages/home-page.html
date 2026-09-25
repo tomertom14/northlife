@@ -23,6 +23,10 @@
   <p class="geo-message" role="status">{{ geoMessage() }}</p>
 }
 
+@if (forYou().length > 0) {
+  <app-for-you-rail [items]="forYou()" />
+}
+
 @if (topPicks().length > 0) {
   <app-picks-rail [events]="topPicks()" />
 }

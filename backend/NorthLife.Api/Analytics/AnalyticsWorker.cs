@@ -10,6 +10,7 @@ namespace NorthLife.Api.Analytics;
 public sealed class AnalyticsWorker(
     IServiceScopeFactory scopes,
     IOptions<AnalyticsOptions> options,
+    IOptions<Recommendations.RecommendationOptions> recommendationOptions,
     AnalyticsMetrics metrics,
     TimeProvider timeProvider,
     ILogger<AnalyticsWorker> logger) : BackgroundService
@@ -22,6 +23,8 @@ public sealed class AnalyticsWorker(
         var interval = TimeSpan.FromSeconds(Math.Max(5, settings.RollupIntervalSeconds));
         var lag = TimeSpan.FromSeconds(Math.Max(0, settings.IngestLagSeconds));
         DateTimeOffset? lastMaintenance = null;
+        DateTimeOffset? lastModel = null;
+        var modelInterval = TimeSpan.FromMinutes(Math.Max(1, recommendationOptions.Value.RefreshMinutes));
 
         using var timer = new PeriodicTimer(interval, timeProvider);
         do
@@ -53,6 +56,14 @@ public sealed class AnalyticsWorker(
                 var processed = await rollup.RunAsync(lag, stoppingToken);
                 metrics.CountRollup("success");
                 if (processed > 0) logger.LogInformation("Rolled up {InteractionCount} interactions.", processed);
+
+                // The similarity model is refreshed on its own, slower cadence (and at start-up).
+                if (lastModel is null || now - lastModel >= modelInterval)
+                {
+                    var neighbours = await scope.ServiceProvider.GetRequiredService<Recommendations.RecommendationModelService>().RefreshAsync(stoppingToken);
+                    lastModel = now;
+                    logger.LogInformation("Recommendation model rebuilt with {NeighbourCount} neighbours.", neighbours);
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

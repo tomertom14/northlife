@@ -21,6 +21,18 @@ using System.Threading.RateLimiting;
 using System.Diagnostics;
 using Prometheus;
 
+// Offline evaluation of the recommender on simulated traffic; needs no database or configuration.
+if (args.Contains("--evaluate-recommendations", StringComparer.OrdinalIgnoreCase))
+{
+    var position = Array.FindIndex(args, argument => string.Equals(argument, "--evaluate-recommendations", StringComparison.OrdinalIgnoreCase));
+    var output = position + 1 < args.Length && !args[position + 1].StartsWith("--", StringComparison.Ordinal) ? args[position + 1] : "recommendation-evaluation.md";
+    var report = NorthLife.Api.Recommendations.OfflineEvaluation.Run();
+    var markdown = report.ToMarkdown();
+    File.WriteAllText(output, markdown);
+    Console.WriteLine(markdown);
+    return;
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
@@ -99,6 +111,10 @@ builder.Services.AddScoped<OwnerAnalyticsService>();
 builder.Services.AddScoped<DemoSeeder>();
 builder.Services.Configure<NorthLife.Api.Ranking.RankingOptions>(builder.Configuration.GetSection(NorthLife.Api.Ranking.RankingOptions.SectionName));
 builder.Services.AddScoped<NorthLife.Api.Ranking.PositionBiasService>();
+builder.Services.Configure<NorthLife.Api.Recommendations.RecommendationOptions>(builder.Configuration.GetSection(NorthLife.Api.Recommendations.RecommendationOptions.SectionName));
+builder.Services.AddSingleton<NorthLife.Api.Recommendations.RecommendationModelCache>();
+builder.Services.AddScoped<NorthLife.Api.Recommendations.RecommendationModelService>();
+builder.Services.AddScoped<NorthLife.Api.Recommendations.RecommendationService>();
 if (builder.Configuration.GetValue($"{AnalyticsOptions.SectionName}:WorkerEnabled", true))
 {
     builder.Services.AddHostedService<AnalyticsWorker>();

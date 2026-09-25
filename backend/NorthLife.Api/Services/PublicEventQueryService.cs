@@ -80,6 +80,49 @@ public sealed class PublicEventQueryService(
             totalCount);
     }
 
+    /// <summary>
+    /// Ids of public events matching the feed filters (all upcoming ones when <paramref name="parameters"/>
+    /// is null), soonest first; recommendations draw only from these.
+    /// </summary>
+    public async Task<List<Guid>> EligibleIdsAsync(PublicEventQueryParameters? parameters, CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+        var query = dbContext.Events.AsNoTracking().Where(eventItem =>
+            eventItem.Status == EventStatus.Published && eventItem.Owner.SuspendedAtUtc == null && eventItem.EndAtUtc > now);
+        if (parameters is not null)
+        {
+            Validate(parameters);
+            query = ApplyPeriod(ApplySharedFilters(query, parameters), parameters, now);
+        }
+
+        return await query
+            .OrderBy(eventItem => eventItem.StartAtUtc)
+            .ThenBy(eventItem => eventItem.Id)
+            .Select(eventItem => eventItem.Id)
+            .Take(MaxRankedCandidates)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<Dictionary<Guid, EventSummaryResponse>> SummariesAsync(IReadOnlyList<Guid> ids, CancellationToken cancellationToken)
+    {
+        var wanted = ids.ToList();
+        var rows = await dbContext.Events.AsNoTracking()
+            .Where(eventItem => wanted.Contains(eventItem.Id))
+            .Select(eventItem => new EventSummaryRow(
+                eventItem.Id,
+                eventItem.Title,
+                eventItem.StartAtUtc,
+                eventItem.EndAtUtc,
+                eventItem.VenueName,
+                eventItem.Locality,
+                eventItem.Price,
+                eventItem.Category,
+                eventItem.ImageId,
+                eventItem.IsHighlighted))
+            .ToListAsync(cancellationToken);
+        return rows.ToDictionary(row => row.Id, row => ToSummary(row));
+    }
+
     /// <summary>"Hot now": score every matching event (<see cref="HotScore"/>), sort, then page.</summary>
     private async Task<PagedResponse<EventSummaryResponse>> HotPageAsync(
         IQueryable<Event> query,

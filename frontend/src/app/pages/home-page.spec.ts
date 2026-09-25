@@ -32,6 +32,7 @@ describe('HomePage', () => {
     const feed = http.expectOne((request) => request.url === '/api/events');
     expect(feed.request.params.get('period')).toBe('today');
     http.expectOne((request) => request.url === '/api/events/top-picks');
+    http.expectOne((request) => request.url === '/api/recommendations');
     http.verify();
   });
 
@@ -41,6 +42,9 @@ describe('HomePage', () => {
     http.expectOne((request) => request.url === '/api/events');
     const picks = http.expectOne((request) => request.url === '/api/events/top-picks');
     expect(picks.request.params.get('period')).toBe('tomorrow');
+    const recommendations = http.expectOne((request) => request.url === '/api/recommendations');
+    expect(recommendations.request.params.get('period')).toBe('tomorrow');
+    expect(recommendations.request.params.get('visitorId')).toMatch(/^[0-9a-f-]{36}$/);
     http.verify();
   });
 
@@ -59,6 +63,7 @@ describe('HomePage', () => {
     expect(feed.request.params.get('sort')).toBe('hot');
     expect(feed.request.params.has('latitude')).toBe(false);
     http.expectOne((request) => request.url === '/api/events/top-picks');
+    http.expectOne((request) => request.url === '/api/recommendations');
     http.verify();
   });
 
@@ -70,7 +75,34 @@ describe('HomePage', () => {
     expect(feed.request.params.get('latitude')).toBe('33.207');
     expect(feed.request.params.get('longitude')).toBe('35.57');
     http.expectOne((request) => request.url === '/api/events/top-picks');
+    http.expectOne((request) => request.url === '/api/recommendations');
     http.verify();
+  });
+
+  it('shows the "for you" rail only for a visitor with history', () => {
+    const { fixture, http } = render({});
+    http.expectOne((request) => request.url === '/api/events').flush({ items: [], page: 1, pageSize: 12, totalCount: 0 });
+    http.expectOne((request) => request.url === '/api/events/top-picks').flush([]);
+    const item = {
+      event: { id: 'e1', title: 'ערב ג׳אז', startAt: '2027-01-01T18:00:00Z', endAt: '2027-01-01T20:00:00Z', venueName: 'V', locality: 'צפת', price: 0, category: 'Music', imageUrl: '/x', isHighlighted: false },
+      reason: 'similar',
+      becauseOfEventId: 'e0',
+      becauseOfTitle: 'הופעה אקוסטית',
+    };
+    http.expectOne((request) => request.url === '/api/recommendations').flush({ personalised: true, items: [item] });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('בשבילך');
+    expect(fixture.nativeElement.textContent).toContain('כי פתחתם את ״הופעה אקוסטית״');
+    http.verify();
+  });
+
+  it('hides the rail when the list is only popular filler', () => {
+    const { fixture, http } = render({});
+    http.expectOne((request) => request.url === '/api/events').flush({ items: [], page: 1, pageSize: 12, totalCount: 0 });
+    http.expectOne((request) => request.url === '/api/events/top-picks').flush([]);
+    http.expectOne((request) => request.url === '/api/recommendations').flush({ personalised: false, items: [] });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('בשבילך');
   });
 
   it('paints the sky for the selected time', () => {

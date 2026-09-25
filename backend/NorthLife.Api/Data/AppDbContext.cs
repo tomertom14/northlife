@@ -17,6 +17,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<EventPopularity> EventPopularity => Set<EventPopularity>();
     public DbSet<AnalyticsCheckpoint> AnalyticsCheckpoints => Set<AnalyticsCheckpoint>();
     public DbSet<PositionPropensityRow> PositionPropensities => Set<PositionPropensityRow>();
+    public DbSet<EventSimilarity> EventSimilarities => Set<EventSimilarity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

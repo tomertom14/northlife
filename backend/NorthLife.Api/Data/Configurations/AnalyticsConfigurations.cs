@@ -85,6 +85,29 @@ public sealed class PositionPropensityConfiguration : IEntityTypeConfiguration<P
     }
 }
 
+public sealed class EventSimilarityConfiguration : IEntityTypeConfiguration<EventSimilarity>
+{
+    public void Configure(EntityTypeBuilder<EventSimilarity> builder)
+    {
+        builder.ToTable("event_similarities");
+        builder.HasKey(row => new { row.SourceEventId, row.TargetEventId }).HasName("pk_event_similarities");
+        builder.Property(row => row.SourceEventId).HasColumnName("source_event_id");
+        builder.Property(row => row.TargetEventId).HasColumnName("target_event_id");
+        builder.Property(row => row.Rank).HasColumnName("rank");
+        builder.Property(row => row.Content).HasColumnName("content");
+        builder.Property(row => row.Collaborative).HasColumnName("collaborative");
+        builder.Property(row => row.Blended).HasColumnName("blended");
+        builder.Property(row => row.CoVisitors).HasColumnName("co_visitors");
+        builder.Property(row => row.ComputedAtUtc).HasColumnName("computed_at_utc").HasColumnType("timestamptz");
+        builder.HasIndex(row => new { row.SourceEventId, row.Rank }).HasDatabaseName("ix_event_similarities_source_rank");
+        builder.HasIndex(row => row.TargetEventId).HasDatabaseName("ix_event_similarities_target");
+        builder.HasOne<Event>().WithMany().HasForeignKey(row => row.SourceEventId).OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("fk_event_similarities_events_source_event_id");
+        builder.HasOne<Event>().WithMany().HasForeignKey(row => row.TargetEventId).OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("fk_event_similarities_events_target_event_id");
+    }
+}
+
 public sealed class AnalyticsCheckpointConfiguration : IEntityTypeConfiguration<AnalyticsCheckpoint>
 {
     public void Configure(EntityTypeBuilder<AnalyticsCheckpoint> builder)

@@ -53,6 +53,19 @@ public sealed class PositionPropensityRow
     public DateTimeOffset EstimatedAtUtc { get; set; }
 }
 
+/// <summary>One of the top-20 blended neighbours of an event, rebuilt by the recommendation model job.</summary>
+public sealed class EventSimilarity
+{
+    public Guid SourceEventId { get; set; }
+    public Guid TargetEventId { get; set; }
+    public short Rank { get; set; }
+    public double Content { get; set; }
+    public double Collaborative { get; set; }
+    public double Blended { get; set; }
+    public int CoVisitors { get; set; }
+    public DateTimeOffset ComputedAtUtc { get; set; }
+}
+
 /// <summary>How far a background job has processed its input; moved in the same transaction as its output.</summary>
 public sealed class AnalyticsCheckpoint
 {

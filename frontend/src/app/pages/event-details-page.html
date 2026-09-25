@@ -74,6 +74,9 @@
           <p class="organizer">מארגן: <strong>{{ item.organizerName }}</strong></p>
         </div>
       </div>
+      @if (similar().length > 0) {
+        <app-similar-events [events]="similar()" />
+      }
     </article>
   }
 </div>
