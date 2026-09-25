@@ -46,6 +46,8 @@
     <button type="submit" class="btn btn-primary" [disabled]="submitting()">
       {{ submitting() ? 'פותחים חשבון…' : 'פתיחת חשבון' }}
     </button>
+
+    <app-google-button text="signup_with" (credential)="signUpWithGoogle($event)" />
   </form>
 
   <p class="alternate">כבר יש לכם חשבון? <a routerLink="/manage/login">כניסה</a></p>

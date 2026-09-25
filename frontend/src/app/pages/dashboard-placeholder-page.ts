@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, Injector, OnInit, afterNextRender, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { AuthApi } from '../auth/auth-api';
 import { AuthStore } from '../auth/auth-store';
 import { PrivateImage } from '../images/private-image';
 import { EventForm } from '../manage/event-form';
@@ -36,6 +37,8 @@ export class DashboardPage implements OnInit {
   readonly confirmDeleteId = signal<string | null>(null);
   readonly deletingId = signal<string | null>(null);
   readonly loggingOut = signal(false);
+  readonly resending = signal(false);
+  private readonly authApi = inject(AuthApi);
 
   readonly firstName = computed(() => (this.auth.user()?.fullName ?? '').trim().split(/\s+/)[0]);
   readonly tiles = computed<StatTile[]>(() => {
@@ -51,6 +54,22 @@ export class DashboardPage implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    // The address may have been verified in another tab since sign-in.
+    if (this.auth.user()?.emailConfirmed === false) this.auth.refreshUser().subscribe({ error: () => undefined });
+  }
+
+  resendVerification(): void {
+    this.resending.set(true);
+    this.authApi.resendVerification().subscribe({
+      next: () => {
+        this.resending.set(false);
+        this.toast.success(`שלחנו קישור אימות חדש אל ${this.auth.user()?.email}.`);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.resending.set(false);
+        if (error.status !== 401) this.toast.error(error.status === 429 ? 'נשלחו כבר כמה קישורים. נסו שוב בעוד רבע שעה.' : 'השליחה נכשלה. נסו שוב.');
+      },
+    });
   }
 
   startCreate(): void {
@@ -92,6 +111,8 @@ export class DashboardPage implements OnInit {
           this.toast.error('האירוע השתנה בינתיים. הרשימה רועננה, פתחו אותו שוב לעריכה.');
           this.closeForm();
           this.load();
+        } else if (error.status === 403 && error.error?.code === 'email_not_verified') {
+          this.toast.error('אמתו קודם את כתובת האימייל. אפשר לשלוח קישור חדש מהבאנר למעלה.');
         } else if (error.status === 404) this.toast.error('האירוע או התמונה לא נמצאו בחשבון שלכם.');
         else if (error.status !== 401) this.toast.error('השמירה נכשלה. נסו שוב בעוד רגע.');
       },

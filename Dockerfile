@@ -18,10 +18,11 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=10000 \
     ASPNETCORE_ENVIRONMENT=Production \
-    ImageStorage__RootPath=/var/data/images
+    ImageStorage__RootPath=/var/data/images \
+    DataProtection__KeysPath=/var/data/keys
 RUN apt-get update && apt-get install --yes --no-install-recommends libgssapi-krb5-2 \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /var/data/images \
+    && mkdir -p /var/data/images /var/data/keys \
     && chown -R $APP_UID:$APP_UID /var/data
 COPY --from=api-build --chown=$APP_UID:$APP_UID /app/publish/ ./
 USER $APP_UID

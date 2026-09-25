@@ -77,6 +77,7 @@ export interface MapBounds {
 export interface PublicConfiguration {
   googleMapsApiKey: string;
   googleMapsMapId: string;
+  googleClientId?: string;
 }
 
 export const CATEGORY_LABELS: Record<EventCategory, string> = {

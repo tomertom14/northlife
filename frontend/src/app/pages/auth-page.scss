@@ -43,6 +43,58 @@ h1 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.step-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.step-lead {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0.35rem 0 0;
+}
+
+.code-input {
+  direction: ltr;
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+
+.label-row {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+}
+
+.small-link {
+  color: var(--ink);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.row-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  justify-content: space-between;
+}
+
+.row-links .btn {
+  min-height: 2.25rem;
+  padding-inline: 0;
+}
+
+.result {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: start;
+}
+
 .alternate {
   color: var(--muted);
   margin: 0;

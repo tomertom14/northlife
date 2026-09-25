@@ -10,7 +10,7 @@ namespace NorthLife.Api.Controllers;
 
 [ApiController]
 [Route("api/admin/events")]
-[Authorize(Roles = nameof(UserRole.Admin))]
+[Authorize(Policy = NorthLife.Api.Authentication.AuthPolicies.AdminWithMfa)]
 public sealed class AdminEventsController(AdminEventService service) : ControllerBase
 {
     [HttpGet]
@@ -84,3 +84,4 @@ public sealed class AdminEventsController(AdminEventService service) : Controlle
 
     private Guid UserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }
+

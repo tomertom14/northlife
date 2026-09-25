@@ -4,27 +4,65 @@
     <p>נהלו את האירועים שלכם ועקבו אחרי סטטוס האישור.</p>
   </div>
 
-  <form class="auth-form" (ngSubmit)="submit()">
-    @if (expired) {
-      <p class="notice notice-warning" role="status">פג תוקף החיבור. התחברו שוב כדי להמשיך מאותו מקום.</p>
-    }
-    <div class="field">
-      <label for="login-email">אימייל</label>
-      <input class="input" id="login-email" type="email" name="email" inputmode="email" autocomplete="email" required [(ngModel)]="email" />
-    </div>
-    <div class="field">
-      <label for="login-password">סיסמה</label>
-      <input class="input" id="login-password" type="password" name="password" autocomplete="current-password" required [(ngModel)]="password" />
-    </div>
+  @if (mfaToken()) {
+    <form class="auth-form" (ngSubmit)="submitCode()">
+      <div>
+        <h2 class="step-title">אימות דו-שלבי</h2>
+        <p class="step-lead">
+          {{ useBackupCode() ? 'כתבו אחד מקודי הגיבוי ששמרתם.' : 'פתחו את אפליקציית האימות וכתבו את הקוד שמופיע עבור NorthLife.' }}
+        </p>
+      </div>
+      <div class="field">
+        <label for="login-code">{{ useBackupCode() ? 'קוד גיבוי' : 'קוד בן 6 ספרות' }}</label>
+        @if (useBackupCode()) {
+          <input class="input code-input" id="login-code" name="code" autocomplete="off" autocapitalize="off" spellcheck="false" [(ngModel)]="code" />
+        } @else {
+          <input class="input code-input" id="login-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]*" [(ngModel)]="code" />
+        }
+      </div>
 
-    @if (errorMessage()) {
-      <p class="notice notice-error" role="alert">{{ errorMessage() }}</p>
-    }
+      @if (errorMessage()) {
+        <p class="notice notice-error" role="alert">{{ errorMessage() }}</p>
+      }
 
-    <button type="submit" class="btn btn-primary" [disabled]="submitting()">
-      {{ submitting() ? 'מתחברים…' : 'כניסה' }}
-    </button>
-  </form>
+      <button type="submit" class="btn btn-primary" [disabled]="submitting()">
+        {{ submitting() ? 'בודקים…' : 'אישור' }}
+      </button>
+      <div class="row-links">
+        <button type="button" class="btn btn-quiet" (click)="useBackupCode.set(!useBackupCode()); code = ''">
+          {{ useBackupCode() ? 'שימוש בקוד מהאפליקציה' : 'אין לי גישה לאפליקציה' }}
+        </button>
+        <button type="button" class="btn btn-quiet" (click)="startOver()">חזרה</button>
+      </div>
+    </form>
+  } @else {
+    <form class="auth-form" (ngSubmit)="submit()">
+      @if (expired) {
+        <p class="notice notice-warning" role="status">פג תוקף החיבור. התחברו שוב כדי להמשיך מאותו מקום.</p>
+      }
+      <div class="field">
+        <label for="login-email">אימייל</label>
+        <input class="input" id="login-email" type="email" name="email" inputmode="email" autocomplete="email" required [(ngModel)]="email" />
+      </div>
+      <div class="field">
+        <div class="label-row">
+          <label for="login-password">סיסמה</label>
+          <a class="small-link" routerLink="/manage/forgot-password">שכחתם סיסמה?</a>
+        </div>
+        <input class="input" id="login-password" type="password" name="password" autocomplete="current-password" required [(ngModel)]="password" />
+      </div>
+
+      @if (errorMessage()) {
+        <p class="notice notice-error" role="alert">{{ errorMessage() }}</p>
+      }
+
+      <button type="submit" class="btn btn-primary" [disabled]="submitting()">
+        {{ submitting() ? 'מתחברים…' : 'כניסה' }}
+      </button>
+
+      <app-google-button text="signin_with" (credential)="signInWithGoogle($event)" />
+    </form>
+  }
 
   <p class="alternate">עוד אין לכם חשבון? <a routerLink="/manage/register">פתיחת חשבון עסק</a></p>
 </section>

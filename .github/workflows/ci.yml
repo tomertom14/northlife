@@ -20,7 +20,19 @@ jobs:
       BootstrapAdmin__FullName: CI Admin
       BootstrapAdmin__Phone: "0500000001"
       BootstrapAdmin__BusinessName: NorthLife CI
+      DataProtection__KeysPath: /tmp/northlife-keys
+      Email__Provider: Smtp
+      Email__Smtp__Host: localhost
+      Email__Smtp__Port: "1025"
+      Email__PublicBaseUrl: http://127.0.0.1:5080
+      RateLimiting__AuthPermitsPerMinute: "200"
+      RateLimiting__EmailPermitsPer15Minutes: "50"
     services:
+      mailpit:
+        image: axllent/mailpit:v1.27
+        ports:
+          - 1025:1025
+          - 8025:8025
       postgres:
         image: postgres:17-alpine
         env:
@@ -58,6 +70,28 @@ jobs:
             sleep 1
           done
 
+          # RFC 6238 TOTP for the given Base32 secret, computed independently of the API.
+          totp() {
+            python3 - "$1" <<'PY'
+          import base64, hashlib, hmac, struct, sys, time
+          secret = sys.argv[1].replace(' ', '').upper()
+          key = base64.b32decode(secret + '=' * (-len(secret) % 8))
+          digest = hmac.new(key, struct.pack('>Q', int(time.time()) // 30), hashlib.sha1).digest()
+          offset = digest[-1] & 15
+          print('%06d' % ((struct.unpack('>I', digest[offset:offset + 4])[0] & 0x7fffffff) % 1000000))
+          PY
+          }
+          # Newest email to an address in Mailpit, reduced to the token of its link.
+          mail_token() {
+            local id
+            for attempt in {1..10}; do
+              id=$(curl --fail --silent "http://127.0.0.1:8025/api/v1/search?query=to:$1" | jq -r '.messages[0].ID // empty')
+              [ -n "$id" ] && break
+              sleep 1
+            done
+            curl --fail --silent "http://127.0.0.1:8025/api/v1/message/$id" | jq -r '.Text' | grep -o 'token=[A-Za-z0-9_-]*' | head -1 | cut -d= -f2
+          }
+
           curl --fail --silent http://127.0.0.1:5080/api/events/today | jq -e '.totalCount >= 1 and (.items | length) >= 1'
           curl --fail --silent http://127.0.0.1:5080/api/events/top-picks | jq -e 'length >= 1'
           curl --fail --silent http://127.0.0.1:5080/api/events/019924c0-0000-7000-a000-000000000001 | jq -e '.title != null'
@@ -73,13 +107,33 @@ jobs:
           login=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/login --header 'Content-Type: application/json' --data '{"email":"ci-owner@example.com","password":"StrongPass123"}')
           token=$(echo "$login" | jq -r '.token')
           echo "$login" | jq -e '.user.role == "BusinessOwner"'
-          curl --fail --silent http://127.0.0.1:5080/api/auth/session --header "Authorization: Bearer $token" | jq -e '.role == "BusinessOwner"'
+          curl --fail --silent http://127.0.0.1:5080/api/auth/session --header "Authorization: Bearer $token" | jq -e '.role == "BusinessOwner" and .emailConfirmed == false'
           test "$(curl --silent --output /dev/null --write-out "%{http_code}" http://127.0.0.1:5080/api/auth/session --header 'Authorization: Bearer invalid')" = "401"
           test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request POST http://127.0.0.1:5080/api/auth/logout --header "Authorization: Bearer $token")" = "204"
 
+          # The owner proves the email address through the link Mailpit caught; each link works once.
+          verify_token=$(mail_token ci-owner@example.com)
+          test -n "$verify_token"
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request POST http://127.0.0.1:5080/api/auth/verify-email --header 'Content-Type: application/json' --data "{\"token\":\"$verify_token\"}")" = "204"
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request POST http://127.0.0.1:5080/api/auth/verify-email --header 'Content-Type: application/json' --data "{\"token\":\"$verify_token\"}")" = "400"
+          curl --fail --silent http://127.0.0.1:5080/api/auth/session --header "Authorization: Bearer $token" | jq -e '.emailConfirmed == true'
+
           admin_login=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/login --header 'Content-Type: application/json' --data '{"email":"ci-admin@northlife.local","password":"NorthLifeCi12345"}')
-          admin_token=$(echo "$admin_login" | jq -r '.token')
-          echo "$admin_login" | jq -e '.user.role == "Admin"'
+          admin_password_token=$(echo "$admin_login" | jq -r '.token')
+          echo "$admin_login" | jq -e '.user.role == "Admin" and .user.mfaVerified == false'
+          # Administrators cannot moderate until TOTP is enrolled.
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" http://127.0.0.1:5080/api/admin/events --header "Authorization: Bearer $admin_password_token")" = "403"
+          totp_secret=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/security/totp/setup --header "Authorization: Bearer $admin_password_token" | jq -r '.secret')
+          enabled=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/security/totp/enable --header "Authorization: Bearer $admin_password_token" --header 'Content-Type: application/json' --data "{\"code\":\"$(totp "$totp_secret")\"}")
+          echo "$enabled" | jq -e '(.recoveryCodes | length) == 10 and .auth.user.mfaVerified == true'
+          admin_token=$(echo "$enabled" | jq -r '.auth.token')
+          # The next sign-in stops at the second factor; a backup code works exactly once.
+          challenge=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/login --header 'Content-Type: application/json' --data '{"email":"ci-admin@northlife.local","password":"NorthLifeCi12345"}')
+          echo "$challenge" | jq -e '.status == "mfa_required" and (has("token") | not)'
+          mfa_ticket=$(echo "$challenge" | jq -r '.mfaToken')
+          backup_code=$(echo "$enabled" | jq -r '.recoveryCodes[0]')
+          curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/mfa --header 'Content-Type: application/json' --data "{\"mfaToken\":\"$mfa_ticket\",\"code\":\"$backup_code\"}" | jq -e '.user.mfaVerified == true'
+          test "$(curl --silent --output /dev/null --write-out "%{http_code}" --request POST http://127.0.0.1:5080/api/auth/mfa --header 'Content-Type: application/json' --data "{\"mfaToken\":\"$mfa_ticket\",\"code\":\"$backup_code\"}")" = "401"
           second_owner=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/register --header 'Content-Type: application/json' --data '{"fullName":"CI Image Owner","email":"ci-image-owner@example.com","password":"StrongPass123","phone":"0501234568","businessName":"CI Images"}')
           second_token=$(echo "$second_owner" | jq -r '.token')
           image=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/manage/images --header "Authorization: Bearer $token" --form 'file=@docs/screenshots/phase-5-dashboard.png;type=image/png')

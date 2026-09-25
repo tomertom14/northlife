@@ -27,6 +27,21 @@ services:
         sync: false
       - key: GoogleMaps__MapId
         sync: false
+      # TOTP secrets are encrypted with these keys; they live on the persistent disk.
+      - key: DataProtection__KeysPath
+        value: /var/data/keys
+      - key: Google__ClientId
+        sync: false
+      - key: Email__Provider
+        value: Brevo
+      - key: Email__BrevoApiKey
+        sync: false
+      - key: Email__From
+        sync: false
+      - key: Email__FromName
+        value: NorthLife
+      - key: Email__PublicBaseUrl
+        sync: false
 
 databases:
   - name: northlife-db

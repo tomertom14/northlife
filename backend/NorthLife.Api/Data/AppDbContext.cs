@@ -8,6 +8,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<Event> Events => Set<Event>();
     public DbSet<EventImage> EventImages => Set<EventImage>();
+    public DbSet<UserToken> UserTokens => Set<UserToken>();
+    public DbSet<ExternalLogin> ExternalLogins => Set<ExternalLogin>();
+    public DbSet<RecoveryCode> RecoveryCodes => Set<RecoveryCode>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

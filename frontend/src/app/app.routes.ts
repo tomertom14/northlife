@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './auth/auth.guard';
+import { authGuard, sessionGuard } from './auth/auth.guard';
 import { adminGuard } from './auth/admin.guard';
 import { PublicLayout } from './layouts/public-layout';
 import { EventDetailsPage } from './pages/event-details-page';
@@ -33,6 +33,32 @@ export const routes: Routes = [
         path: 'register',
         loadComponent: () => import('./pages/register-page').then((m) => m.RegisterPage),
         title: 'הרשמה לעסקים | NorthLife',
+      },
+      {
+        path: 'verify-email',
+        loadComponent: () => import('./pages/account-pages').then((m) => m.VerifyEmailPage),
+        title: 'אימות אימייל | NorthLife',
+      },
+      {
+        path: 'forgot-password',
+        loadComponent: () => import('./pages/account-pages').then((m) => m.ForgotPasswordPage),
+        title: 'שכחתי סיסמה | NorthLife',
+      },
+      {
+        path: 'reset-password',
+        loadComponent: () => import('./pages/account-pages').then((m) => m.ResetPasswordPage),
+        title: 'סיסמה חדשה | NorthLife',
+      },
+      {
+        path: 'complete-profile',
+        loadComponent: () => import('./pages/account-pages').then((m) => m.CompleteProfilePage),
+        title: 'השלמת פרטי העסק | NorthLife',
+      },
+      {
+        path: 'security',
+        loadComponent: () => import('./pages/security-page').then((m) => m.SecurityPage),
+        canActivate: [sessionGuard],
+        title: 'אבטחת החשבון | NorthLife',
       },
       {
         path: 'dashboard',

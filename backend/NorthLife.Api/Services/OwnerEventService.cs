@@ -41,6 +41,7 @@ public sealed class OwnerEventService(
         CancellationToken cancellationToken)
     {
         var normalized = OwnerEventInputValidator.Validate(request, requireRevision: false);
+        await RequireConfirmedEmailAsync(ownerId, cancellationToken);
         await imageService.RequireOwnedAsync(
             request.ImageId,
             ownerId,
@@ -78,6 +79,7 @@ public sealed class OwnerEventService(
         CancellationToken cancellationToken)
     {
         var normalized = OwnerEventInputValidator.Validate(request, requireRevision: true);
+        await RequireConfirmedEmailAsync(ownerId, cancellationToken);
         var eventItem = await RequireOwnedEventAsync(ownerId, id, cancellationToken);
         await imageService.RequireOwnedAsync(
             request.ImageId,
@@ -114,6 +116,17 @@ public sealed class OwnerEventService(
         var eventItem = await RequireOwnedEventAsync(ownerId, id, cancellationToken);
         lifecycle.Delete(eventItem, expectedRevision);
         await SaveWithConcurrencyAsync(cancellationToken);
+    }
+
+    /// <summary>Only owners who proved their email may send events for review.</summary>
+    private async Task RequireConfirmedEmailAsync(Guid ownerId, CancellationToken cancellationToken)
+    {
+        if (!await dbContext.Users.AnyAsync(
+                user => user.Id == ownerId && user.EmailConfirmedAtUtc != null,
+                cancellationToken))
+        {
+            throw new EmailNotConfirmedException();
+        }
     }
 
     private async Task<Event> RequireOwnedEventAsync(
@@ -228,3 +241,5 @@ public sealed class OwnerEventValidationException(
 }
 
 public sealed class OwnerEventNotFoundException : Exception;
+
+public sealed class EmailNotConfirmedException : Exception;

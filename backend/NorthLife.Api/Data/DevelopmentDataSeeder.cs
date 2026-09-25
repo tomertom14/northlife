@@ -164,6 +164,7 @@ public sealed class DevelopmentDataSeeder(
             BusinessName = businessName,
             Role = role,
             CreatedAtUtc = now,
+            EmailConfirmedAtUtc = now,
         };
 
         var undisclosedPassword = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));

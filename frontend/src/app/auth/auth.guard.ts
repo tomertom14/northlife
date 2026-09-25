@@ -10,6 +10,12 @@ export const authGuard: CanActivateFn = (_route, state) => {
   return auth.user()?.role === 'Admin' ? router.createUrlTree(['/manage/admin']) : true;
 };
 
+/** Any signed-in account, whatever its role (account security settings). */
+export const sessionGuard: CanActivateFn = (_route, state) => {
+  const auth = inject(AuthStore);
+  return auth.hasValidSession() ? true : loginRedirect(auth, inject(Router), state.url);
+};
+
 export function loginRedirect(auth: AuthStore, router: Router, returnUrl: string) {
   const expired = auth.isAuthenticated();
   auth.clear();

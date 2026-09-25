@@ -5,9 +5,12 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.DataProtection;
 using NorthLife.Api.Authentication;
 using NorthLife.Api.Data;
+using NorthLife.Api.Email;
 using NorthLife.Api.Health;
+using NorthLife.Api.Identity;
 using NorthLife.Api.Images;
 using NorthLife.Api.Models;
 using NorthLife.Api.Services;
@@ -76,6 +79,36 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IPasswordHasher<AppUser>, PasswordHasher<AppUser>>();
 builder.Services.AddScoped<AuthTokenService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<AccountService>();
+builder.Services.AddScoped<UserTokenService>();
+builder.Services.AddScoped<TotpService>();
+builder.Services.AddSingleton<IdentityTickets>();
+
+// Data Protection encrypts TOTP secrets and sign-in tickets. Keys must survive restarts and deploys.
+var dataProtection = builder.Services.AddDataProtection().SetApplicationName("NorthLife");
+var keysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrWhiteSpace(keysPath))
+{
+    dataProtection.PersistKeysToFileSystem(Directory.CreateDirectory(keysPath));
+}
+
+builder.Services.Configure<GoogleOptions>(builder.Configuration.GetSection(GoogleOptions.SectionName));
+builder.Services.AddSingleton<IGoogleTokenValidator, GoogleTokenValidator>();
+
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
+builder.Services.AddScoped<AccountEmails>();
+switch (builder.Configuration[$"{EmailOptions.SectionName}:Provider"]?.Trim().ToLowerInvariant())
+{
+    case "smtp":
+        builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+        break;
+    case "brevo":
+        builder.Services.AddHttpClient<IEmailSender, BrevoEmailSender>();
+        break;
+    default:
+        builder.Services.AddScoped<IEmailSender, LogEmailSender>();
+        break;
+}
 builder.Services.AddSingleton<IImageStorage, LocalImageStorage>();
 builder.Services.AddSingleton<EventImageProcessor>();
 builder.Services.AddScoped<EventImageService>();
@@ -124,20 +157,31 @@ builder.Services
             },
             OnForbidden = async context =>
             {
+                // An administrator whose session skipped TOTP gets a specific code the client can act on.
+                var needsMfa =
+                    context.HttpContext.User.IsInRole(nameof(UserRole.Admin)) &&
+                    context.HttpContext.User.FindFirst(AuthTokenService.MfaClaim)?.Value != "true";
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 context.Response.ContentType = "application/problem+json";
                 await context.Response.WriteAsJsonAsync(new
                 {
                     type = "https://httpstatuses.com/403",
-                    title = "אין הרשאה לפעולה הזו.",
+                    title = needsMfa ? "נדרש אימות דו-שלבי לחשבון מנהל." : "אין הרשאה לפעולה הזו.",
                     status = StatusCodes.Status403Forbidden,
-                    code = "forbidden",
+                    code = needsMfa ? "mfa_required" : "forbidden",
                     traceId = context.HttpContext.TraceIdentifier,
                 });
             },
         };
     });
-builder.Services.AddAuthorization();
+// Administrators must have passed the TOTP step in this session, not only hold the role.
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(AuthPolicies.AdminWithMfa, policy => policy
+        .RequireRole(nameof(UserRole.Admin))
+        .RequireClaim(AuthTokenService.MfaClaim, "true"));
+
+var authPermitsPerMinute = builder.Configuration.GetValue("RateLimiting:AuthPermitsPerMinute", 10);
+var emailPermitsPerWindow = builder.Configuration.GetValue("RateLimiting:EmailPermitsPer15Minutes", 5);
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -146,8 +190,19 @@ builder.Services.AddRateLimiter(options =>
             httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 10,
+                PermitLimit = authPermitsPerMinute,
                 Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            }));
+    // Anything that sends an email: resend verification and forgot password.
+    options.AddPolicy("email", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = emailPermitsPerWindow,
+                Window = TimeSpan.FromMinutes(15),
                 QueueLimit = 0,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
             }));

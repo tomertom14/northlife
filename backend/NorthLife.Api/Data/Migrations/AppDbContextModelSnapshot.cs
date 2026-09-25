@@ -44,6 +44,10 @@ namespace NorthLife.Api.Data.Migrations
                         .HasColumnType("character varying(320)")
                         .HasColumnName("email");
 
+                    b.Property<DateTimeOffset?>("EmailConfirmedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("email_confirmed_at_utc");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -72,6 +76,24 @@ namespace NorthLife.Api.Data.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)")
                         .HasColumnName("role");
+
+                    b.Property<DateTimeOffset?>("TotpEnabledAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("totp_enabled_at_utc");
+
+                    b.Property<long?>("TotpLastUsedStep")
+                        .HasColumnType("bigint")
+                        .HasColumnName("totp_last_used_step");
+
+                    b.Property<string>("TotpPendingSecretProtected")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("totp_pending_secret_protected");
+
+                    b.Property<string>("TotpSecretProtected")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("totp_secret_protected");
 
                     b.HasKey("Id")
                         .HasName("pk_users");
@@ -296,6 +318,114 @@ namespace NorthLife.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("NorthLife.Api.Models.ExternalLogin", b =>
+                {
+                    b.Property<string>("Provider")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("subject");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Provider", "Subject")
+                        .HasName("pk_external_logins");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_external_logins_user_id");
+
+                    b.ToTable("external_logins", (string)null);
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.RecoveryCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code_hash");
+
+                    b.Property<DateTimeOffset?>("UsedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("used_at_utc");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_recovery_codes");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_recovery_codes_user_id");
+
+                    b.ToTable("recovery_codes", (string)null);
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.UserToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("purpose");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTimeOffset?>("UsedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("used_at_utc");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_tokens");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_user_tokens_token_hash");
+
+                    b.HasIndex("UserId", "Purpose")
+                        .HasDatabaseName("ix_user_tokens_user_purpose");
+
+                    b.ToTable("user_tokens", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_user_tokens_purpose", "purpose IN ('VerifyEmail', 'ResetPassword')");
+                        });
+                });
+
             modelBuilder.Entity("NorthLife.Api.Models.Event", b =>
                 {
                     b.HasOne("NorthLife.Api.Models.EventImage", "Image")
@@ -329,9 +459,51 @@ namespace NorthLife.Api.Data.Migrations
                     b.Navigation("Uploader");
                 });
 
+            modelBuilder.Entity("NorthLife.Api.Models.ExternalLogin", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.AppUser", "User")
+                        .WithMany("ExternalLogins")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_external_logins_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.RecoveryCode", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.AppUser", "User")
+                        .WithMany("RecoveryCodes")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_recovery_codes_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.UserToken", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.AppUser", "User")
+                        .WithMany("Tokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_tokens_users_user_id");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("NorthLife.Api.Models.AppUser", b =>
                 {
                     b.Navigation("Events");
+
+                    b.Navigation("ExternalLogins");
+
+                    b.Navigation("RecoveryCodes");
+
+                    b.Navigation("Tokens");
 
                     b.Navigation("UploadedImages");
                 });
