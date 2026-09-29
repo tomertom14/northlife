@@ -388,6 +388,18 @@ app.Use(async (context, next) =>
 });
 app.UseExceptionHandler();
 
+// Google Identity Services asks for this referrer policy when a site is tested on plain
+// http://localhost (local QA). Deployed hosts keep the browser default.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Host.Host is "localhost" or "127.0.0.1")
+    {
+        context.Response.Headers["Referrer-Policy"] = "no-referrer-when-downgrade";
+    }
+
+    await next();
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

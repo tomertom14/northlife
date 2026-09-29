@@ -72,6 +72,16 @@ public sealed class IdentityEndpointTests(NorthLifeApiFactory factory) : IClassF
         Assert.True(json.RootElement.TryGetProperty("googleClientId", out _));
     }
 
+    [Fact]
+    public async Task Only_localhost_gets_the_referrer_policy_google_sign_in_needs_over_http()
+    {
+        var local = await _client.GetAsync("/api/config/public");
+        var deployed = await _client.GetAsync("http://northlife.example/api/config/public");
+
+        Assert.Equal("no-referrer-when-downgrade", Assert.Single(local.Headers.GetValues("Referrer-Policy")));
+        Assert.False(deployed.Headers.Contains("Referrer-Policy"));
+    }
+
     private static string Token(UserRole role, bool mfaVerified) =>
         new AuthTokenService(
             Options.Create(new JwtOptions { JwtKey = "northlife-tests-only-signing-key-32-bytes" }),
