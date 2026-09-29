@@ -96,6 +96,12 @@ export const routes: Routes = [
         canActivate: [adminGuard],
         title: 'יומן פעולות | NorthLife',
       },
+      {
+        path: 'admin/auto-moderation',
+        loadComponent: () => import('./pages/admin-auto-moderation-page').then((m) => m.AdminAutoModerationPage),
+        canActivate: [adminGuard],
+        title: 'אישור אוטומטי | NorthLife',
+      },
       { path: '', pathMatch: 'full', redirectTo: 'login' },
     ],
   },

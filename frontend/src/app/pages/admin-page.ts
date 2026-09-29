@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Observable, forkJoin } from 'rxjs';
 import { AdminEvent, AdminEventsApi } from '../admin/admin-events-api';
+import { autoReviewNote } from '../admin/auto-moderation-api';
 import { AuthStore } from '../auth/auth-store';
 import { PrivateImage } from '../images/private-image';
 import { AdminNav } from '../manage/admin-nav';
@@ -45,6 +46,7 @@ export class AdminPage implements OnInit {
   readonly rejectingId = signal<string | null>(null);
   readonly confirmDeleteId = signal<string | null>(null);
   readonly rejectError = signal('');
+  readonly note = autoReviewNote;
   status: '' | OwnerEventStatus = 'Pending';
   search = '';
   rejectionReason = '';

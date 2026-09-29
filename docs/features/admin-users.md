@@ -74,7 +74,10 @@ Suspension, unsuspension and role changes rotate the account's security stamp, s
 | `event.updated` | title, revision |
 | `event.approved`, `event.rejected`, `event.highlighted`, `event.unhighlighted` | title, status before and after, rejection reason |
 | `event.deleted` | title |
+| `automoderation.settings_changed` | each changed setting with its old and new value (phase 17) |
+| `automoderation.run` | mode and counts of a manual run (phase 17) |
 
+- An entry without an actor was written by the automatic event approval service (phase 17, [auto-moderation.md](auto-moderation.md)); its approvals also carry `automatic: true`. The pages show the actor as "אישור אוטומטי".
 - The entry is added to the same unit of work as the change, so it commits or rolls back with it.
 - No endpoint updates or deletes entries.
 - The user page shows entries where the user is the target or the actor.

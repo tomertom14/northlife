@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using NorthLife.Api.Contracts;
 using NorthLife.Api.Data;
@@ -40,7 +41,34 @@ public sealed class AdminEventService(
         var events = await ordered
             .Take(200)
             .ToListAsync(cancellationToken);
-        return events.Select(ToResponse).ToList();
+        var reviews = await LatestAutoReviewsAsync(events, cancellationToken);
+        return events.Select(eventItem => ToResponse(eventItem, reviews.GetValueOrDefault(eventItem.Id))).ToList();
+    }
+
+    /// <summary>
+    /// The automatic approval service's latest verdict per event, kept only when it is about the
+    /// event's current revision: after an edit or a manual decision the old note no longer applies.
+    /// </summary>
+    private async Task<Dictionary<Guid, AutoReviewResponse>> LatestAutoReviewsAsync(
+        IReadOnlyList<Event> events,
+        CancellationToken cancellationToken)
+    {
+        var ids = events.Select(eventItem => eventItem.Id).ToList();
+        var latest = await dbContext.AutoModerationDecisions.AsNoTracking()
+            .Where(decision => ids.Contains(decision.EventId))
+            .GroupBy(decision => decision.EventId)
+            .Select(group => group.OrderByDescending(decision => decision.DecidedAtUtc).First())
+            .ToListAsync(cancellationToken);
+        var revisions = events.ToDictionary(eventItem => eventItem.Id, eventItem => eventItem.Revision);
+        return latest
+            .Where(decision => revisions[decision.EventId] == decision.EventRevision)
+            .ToDictionary(
+                decision => decision.EventId,
+                decision =>
+                {
+                    using var reasons = JsonDocument.Parse(decision.Reasons);
+                    return new AutoReviewResponse(decision.Outcome, reasons.RootElement.Clone(), decision.DecidedAtUtc);
+                });
     }
 
     public async Task<AdminEventResponse> CreateAsync(
@@ -155,14 +183,16 @@ public sealed class AdminEventService(
         eventItem.Tags = normalized.Tags;
     }
 
-    private static AdminEventResponse ToResponse(Event eventItem) => new(
+    private static AdminEventResponse ToResponse(Event eventItem) => ToResponse(eventItem, null);
+
+    private static AdminEventResponse ToResponse(Event eventItem, AutoReviewResponse? autoReview) => new(
         eventItem.Id, eventItem.OwnerId, eventItem.Owner.FullName, eventItem.Owner.BusinessName,
         eventItem.Title, eventItem.Description, eventItem.Category, eventItem.VenueName,
         eventItem.Locality, eventItem.Address, eventItem.Latitude, eventItem.Longitude,
         eventItem.StartAtUtc, eventItem.EndAtUtc, eventItem.Price, eventItem.ImageId,
         $"/api/images/{eventItem.ImageId}", eventItem.OrganizerName, eventItem.Tags,
         eventItem.Status, eventItem.IsHighlighted, eventItem.RejectionReason,
-        eventItem.UpdatedAtUtc, eventItem.Revision);
+        eventItem.UpdatedAtUtc, eventItem.Revision, autoReview);
 }
 
 public sealed class AdminEventNotFoundException : Exception;

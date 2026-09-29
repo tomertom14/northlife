@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { AUDIT_LABELS, AdminUsersApi, AuditEntry, describeAudit } from '../admin/admin-users-api';
+import { AUDIT_LABELS, AdminUsersApi, AuditEntry, auditActor, describeAudit } from '../admin/admin-users-api';
 import { AdminNav } from '../manage/admin-nav';
 import { formatLongDate, formatTime } from '../shared/jerusalem-time';
 
@@ -25,7 +25,7 @@ import { formatLongDate, formatTime } from '../shared/jerusalem-time';
         <ul class="timeline card">
           @for (entry of entries(); track entry.id) {
             <li>
-              <span class="when">{{ when(entry.createdAt) }}, {{ entry.actorName }}</span>
+              <span class="when">{{ when(entry.createdAt) }}, {{ actor(entry) }}</span>
               <span class="what">
                 {{ labels[entry.action] ?? entry.action }}
                 @if (entry.targetType === 'User') {
@@ -57,6 +57,7 @@ export class AdminAuditPage implements OnInit {
   readonly failed = signal(false);
   readonly labels = AUDIT_LABELS;
   readonly describe = describeAudit;
+  readonly actor = auditActor;
 
   ngOnInit(): void {
     this.api.audit(null).subscribe({

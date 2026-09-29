@@ -119,6 +119,13 @@ if (builder.Configuration.GetValue($"{AnalyticsOptions.SectionName}:WorkerEnable
 {
     builder.Services.AddHostedService<AnalyticsWorker>();
 }
+builder.Services.Configure<NorthLife.Api.Moderation.AutoModerationOptions>(builder.Configuration.GetSection(NorthLife.Api.Moderation.AutoModerationOptions.SectionName));
+builder.Services.AddScoped<NorthLife.Api.Moderation.AutoModerationService>();
+builder.Services.AddScoped<NorthLife.Api.Moderation.AutoModerationAdminService>();
+if (builder.Configuration.GetValue($"{NorthLife.Api.Moderation.AutoModerationOptions.SectionName}:WorkerEnabled", true))
+{
+    builder.Services.AddHostedService<NorthLife.Api.Moderation.AutoModerationWorker>();
+}
 builder.Services.Configure<MetricsAccessOptions>(builder.Configuration.GetSection(MetricsAccessOptions.SectionName));
 
 // Data Protection encrypts TOTP secrets and sign-in tickets. Keys must survive restarts and deploys.

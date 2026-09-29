@@ -1,0 +1,98 @@
+// The automatic approval tab; shares cards and the timeline with admin-people.scss.
+.intro {
+  max-width: 48rem;
+}
+
+.status {
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.status-text {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.run-result {
+  grid-column: 1 / -1;
+}
+
+.settings {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.fields {
+  display: grid;
+  gap: 0.9rem 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+
+.modes {
+  border: 0;
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+}
+
+.mode {
+  align-items: start;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 0.75rem 0.9rem;
+}
+
+.mode.selected {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.mode input {
+  accent-color: var(--ink);
+  height: 1.1rem;
+  margin: 0.2rem 0 0;
+  width: 1.1rem;
+}
+
+.mode-text {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.mode-name {
+  font-weight: 600;
+}
+
+.mode-hint {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.run-at {
+  max-width: 16rem;
+}
+
+.save-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.runs .what.failed {
+  color: var(--danger);
+}
+
+@media (max-width: 44rem) {
+  .status {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .status .btn,
+  .save-row .btn {
+    width: 100%;
+  }
+}

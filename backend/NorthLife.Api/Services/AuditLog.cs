@@ -9,7 +9,8 @@ public sealed class AuditLog(AppDbContext dbContext, TimeProvider timeProvider)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    public void Record(Guid actorId, string action, string targetType, Guid targetId, object details) =>
+    /// <param name="actorId">The acting administrator, or null for the automatic event approval service.</param>
+    public void Record(Guid? actorId, string action, string targetType, Guid targetId, object details) =>
         dbContext.AuditEntries.Add(new AuditEntry
         {
             ActorId = actorId,

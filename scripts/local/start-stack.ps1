@@ -62,8 +62,10 @@ $common = @(
   '-e', "GoogleMaps__MapId=$(Setting 'GoogleMaps__MapId')",
   '-e', "Google__ClientId=$(Setting 'Google__ClientId')",
   '-e', "Demo__OwnerPassword=$(Setting 'Demo__OwnerPassword')",
-  # Local conveniences: numbers appear within a minute, and Prometheus may scrape without a token.
+  # Local conveniences: numbers appear within a minute, the daily automatic approval run starts
+  # within 20 seconds of its time, and Prometheus may scrape without a token.
   '-e', 'Analytics__RollupIntervalSeconds=20', '-e', 'Analytics__IngestLagSeconds=30',
+  '-e', 'AutoModeration__TickSeconds=20',
   '-e', 'Metrics__AllowPrivateNetwork=true',
   '-v', 'northlife-images:/var/data/images', '-v', 'northlife-keys:/var/data/keys'
 )

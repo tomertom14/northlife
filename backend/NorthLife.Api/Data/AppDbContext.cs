@@ -18,6 +18,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<AnalyticsCheckpoint> AnalyticsCheckpoints => Set<AnalyticsCheckpoint>();
     public DbSet<PositionPropensityRow> PositionPropensities => Set<PositionPropensityRow>();
     public DbSet<EventSimilarity> EventSimilarities => Set<EventSimilarity>();
+    public DbSet<AutoModerationSettings> AutoModerationSettings => Set<AutoModerationSettings>();
+    public DbSet<AutoModerationRun> AutoModerationRuns => Set<AutoModerationRun>();
+    public DbSet<AutoModerationDecision> AutoModerationDecisions => Set<AutoModerationDecision>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

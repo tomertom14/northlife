@@ -1,12 +1,15 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { OwnerEvent, OwnerEventInput, OwnerEventStatus } from '../owner/owner-events-api';
+import { AutoReview } from './auto-moderation-api';
 
 export interface AdminEvent extends OwnerEvent {
   ownerId: string;
   ownerName: string;
   ownerBusinessName: string;
   isHighlighted: boolean;
+  /** The automatic approval service's note on this revision, if it has one. */
+  autoReview?: AutoReview | null;
 }
 
 @Injectable({ providedIn: 'root' })

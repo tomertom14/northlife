@@ -26,7 +26,8 @@ public sealed record AdminEventResponse(
     bool IsHighlighted,
     string? RejectionReason,
     DateTimeOffset UpdatedAt,
-    int Revision);
+    int Revision,
+    AutoReviewResponse? AutoReview = null);
 
 public sealed record RevisionRequest(int Revision);
 public sealed record RejectEventRequest(int Revision, string Reason);

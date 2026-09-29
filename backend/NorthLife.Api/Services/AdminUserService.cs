@@ -235,9 +235,10 @@ public sealed class AdminUserService(
         exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.SerializationFailure };
 
     // Filter and order on the entity first; EF cannot translate predicates over a constructor projection.
+    // A null actor is the automatic event approval service.
     private static IQueryable<AuditRow> ProjectAudit(IQueryable<AuditEntry> source) =>
         source.Select(entry => new AuditRow(
-            entry.Id, entry.ActorId, entry.Actor.FullName, entry.Action, entry.TargetType,
+            entry.Id, entry.ActorId, entry.Actor == null ? null : entry.Actor.FullName, entry.Action, entry.TargetType,
             entry.TargetId, entry.Details, entry.CreatedAtUtc));
 
     private static AuditEntryResponse ToResponse(AuditRow row)
@@ -249,7 +250,7 @@ public sealed class AdminUserService(
     }
 
     private sealed record AuditRow(
-        Guid Id, Guid ActorId, string ActorName, string Action, string TargetType,
+        Guid Id, Guid? ActorId, string? ActorName, string Action, string TargetType,
         Guid TargetId, string Details, DateTimeOffset CreatedAtUtc);
 }
 

@@ -99,6 +99,9 @@
                 @if (event.isHighlighted) {
                   <span class="highlight-tag">בחירת העורכים</span>
                 }
+                @if (event.status === 'Published' && event.autoReview?.outcome === 'Approved') {
+                  <span class="auto-tag">אושר אוטומטית</span>
+                }
               </div>
               <h3>{{ event.title }}</h3>
               <p class="meta">{{ event.ownerBusinessName }}, {{ event.locality }}</p>
@@ -110,6 +113,18 @@
               </p>
               @if (event.rejectionReason) {
                 <p class="reason"><strong>סיבת הדחייה:</strong> {{ event.rejectionReason }}</p>
+              }
+              @if (note(event); as autoNote) {
+                <div class="auto-note" [class.held]="autoNote.tone === 'held'">
+                  <p class="auto-note-title">{{ autoNote.title }}</p>
+                  @if (autoNote.lines.length > 0) {
+                    <ul>
+                      @for (line of autoNote.lines; track $index) {
+                        <li>{{ line }}</li>
+                      }
+                    </ul>
+                  }
+                </div>
               }
             </div>
             <div class="item-actions">

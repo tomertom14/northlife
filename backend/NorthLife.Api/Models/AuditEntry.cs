@@ -4,7 +4,9 @@ namespace NorthLife.Api.Models;
 public sealed class AuditEntry
 {
     public Guid Id { get; set; } = Guid.CreateVersion7();
-    public Guid ActorId { get; set; }
+
+    /// <summary>The administrator who acted, or null when the automatic event approval service acted.</summary>
+    public Guid? ActorId { get; set; }
     public required string Action { get; set; }
     public required string TargetType { get; set; }
     public Guid TargetId { get; set; }
@@ -13,5 +15,5 @@ public sealed class AuditEntry
     public required string Details { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
 
-    public AppUser Actor { get; set; } = null!;
+    public AppUser? Actor { get; set; }
 }

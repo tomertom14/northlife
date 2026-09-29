@@ -20,10 +20,11 @@ public sealed record AdminUserPage(IReadOnlyList<AdminUserSummary> Items, string
 
 public sealed record AdminUserEvent(Guid Id, string Title, EventStatus Status, DateTimeOffset StartAt);
 
+/// <summary>An audit entry; <see cref="ActorId"/> and <see cref="ActorName"/> are null for the automatic approval service.</summary>
 public sealed record AuditEntryResponse(
     Guid Id,
-    Guid ActorId,
-    string ActorName,
+    Guid? ActorId,
+    string? ActorName,
     string Action,
     string TargetType,
     Guid TargetId,

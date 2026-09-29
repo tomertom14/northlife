@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { AdminUsersApi, AuditEntry, describeAudit } from './admin-users-api';
+import { AdminUsersApi, AuditEntry, auditActor, describeAudit } from './admin-users-api';
 
 describe('AdminUsersApi', () => {
   let api: AdminUsersApi;
@@ -67,5 +67,28 @@ describe('describeAudit', () => {
 
   it('ignores details that are not text', () => {
     expect(describeAudit(entry('event.deleted', { title: 42 }))).toBe('');
+  });
+
+  it('summarises a manual run of the automatic approval service', () => {
+    expect(describeAudit(entry('automoderation.run', { mode: 'Approve', checked: 3, approved: 2, wouldApprove: 0, held: 1 }))).toBe(
+      'נבדקו 3 אירועים: 2 אושרו, אחד נשאר לבדיקה.',
+    );
+  });
+
+  it('names a mode change and counts the other changed settings', () => {
+    const changes = { mode: { from: 'NotesOnly', to: 'Approve' }, maxPrice: { from: 1000, to: 500 }, runAt: { from: '07:00', to: '06:00' } };
+    expect(describeAudit(entry('automoderation.settings_changed', { changes }))).toBe('מצב: מהערות בלבד לאישור אוטומטי. עודכנו עוד 2 הגדרות');
+    expect(describeAudit(entry('automoderation.settings_changed', { changes: { maxPrice: { from: 1000, to: 500 } } }))).toBe('עודכנה הגדרה אחת');
+  });
+});
+
+describe('auditActor', () => {
+  it('names the administrator, or the automatic approval service when there is no actor', () => {
+    const base: AuditEntry = {
+      id: '1', actorId: 'a', actorName: 'נועה', action: 'event.approved', targetType: 'Event',
+      targetId: 't', details: {}, createdAt: '2026-09-29T07:00:00Z',
+    };
+    expect(auditActor(base)).toBe('נועה');
+    expect(auditActor({ ...base, actorId: null, actorName: null })).toBe('אישור אוטומטי');
   });
 });

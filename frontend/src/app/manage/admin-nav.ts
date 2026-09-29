@@ -10,6 +10,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
       <a routerLink="/manage/admin" routerLinkActive="current" [routerLinkActiveOptions]="{ exact: true }" ariaCurrentWhenActive="page">תור בדיקה</a>
       <a routerLink="/manage/admin/users" routerLinkActive="current" ariaCurrentWhenActive="page">משתמשים</a>
       <a routerLink="/manage/admin/audit" routerLinkActive="current" ariaCurrentWhenActive="page">יומן פעולות</a>
+      <a routerLink="/manage/admin/auto-moderation" routerLinkActive="current" ariaCurrentWhenActive="page">אישור אוטומטי</a>
     </nav>
   `,
   styles: [`

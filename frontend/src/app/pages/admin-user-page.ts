@@ -8,6 +8,7 @@ import {
   AdminUserDetails,
   AdminUsersApi,
   ROLE_LABELS,
+  auditActor,
   describeAudit,
 } from '../admin/admin-users-api';
 import { AuthStore } from '../auth/auth-store';
@@ -48,6 +49,7 @@ export class AdminUserPage implements OnInit {
   readonly roleLabels = ROLE_LABELS;
   readonly auditLabels = AUDIT_LABELS;
   readonly describe = describeAudit;
+  readonly actor = auditActor;
   readonly date = formatShortDate;
   reason = '';
   role: UserRole = 'BusinessOwner';

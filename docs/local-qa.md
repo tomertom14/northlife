@@ -1,6 +1,6 @@
 # Local QA before deployment
 
-This guide runs the complete product on your machine and walks through every feature added in phases 11–15. Deployment (phase 16) waits until this checklist passes.
+This guide runs the complete product on your machine and walks through every feature added in phases 11–15 and 17. Deployment (phase 16) waits until this checklist passes.
 
 ## 1. Start the stack
 
@@ -130,22 +130,45 @@ Tick each item as you go. Expected results are in bold.
 - [ ] Switch the feed to "מחר". **The rail only shows events from tomorrow's feed.**
 - [ ] Any event page. **"עוד אירועים כאלה" lists similar events (a jazz night brings other music first).**
 
+### Automatic event approval (phase 17)
+
+The service starts in "הערות בלבד" (notes only): it writes notes but publishes nothing until you switch it on.
+
+- [ ] `/manage/admin` → "אישור אוטומטי".
+  - **The current mode, the next run time (07:00 Israel time by default) and the recent runs.**
+  - If the stack started after today's run time, the list already shows one daily run: the service catches up a missed run at once.
+- [ ] As owner1 (a trusted owner), create an event in Safed for next week with a clean description. Back on the tab, press "הרצה עכשיו".
+  - **"נבדקו … : אחד עומד בכל התנאים …".**
+  - In "תור בדיקה" the event has a green note "עומד בכל התנאים" and is still pending.
+- [ ] As owner1, create an event with a phone number in the description, or with its pin in Tel Aviv. Run again.
+  - **An amber note lists the reason: "בטקסט יש מספר טלפון" or "המיקום מחוץ לאזור הצפון".**
+- [ ] Register a new owner and submit a clean event. Run again.
+  - **Held: the account is new and has no published events.**
+- [ ] Switch to "אישור אוטומטי", save, and run.
+  - **The clean owner1 event is published and tagged "אושר אוטומטית"; the held ones stay pending.**
+  - "יומן פעולות" shows the approval under "אישור אוטומטי", and your settings change and run under your name.
+- [ ] Add a word to the banned list (for example "טעימות"), save, submit an event with "והטעימות" in its title, and run. **Held for the banned word, despite the attached prefix.**
+- [ ] Enter an invalid value, such as a similarity of 0.2, and save. **The field is marked with its allowed range.**
+- [ ] Switch back to "הערות בלבד" or "כבוי" when you are done, and delete the test events.
+
 ## 3. Automated suites
 
 ```powershell
-npm test                                   # backend (184) and frontend (66) unit tests
+npm test                                   # backend (288) and frontend (82) unit tests
 powershell -File scripts/e2e/phase-11-identity.ps1 -AdminEmail <admin> -AdminPassword <password>
 powershell -File scripts/e2e/phase-12-admin-users.ps1 -AdminEmail <admin> -AdminPassword <password> -AdminTotpSecret <base32 secret>
 powershell -File scripts/e2e/phase-13-analytics.ps1 -AdminEmail <admin> -AdminPassword <password> -AdminTotpSecret <base32 secret>
 powershell -File scripts/e2e/phase-14-ranking.ps1 -AdminEmail <admin> -AdminPassword <password> -AdminTotpSecret <base32 secret>
 powershell -File scripts/e2e/phase-15-recommendations.ps1
 docker run --rm northlife:local --evaluate-recommendations /tmp/evaluation.md
+powershell -File scripts/e2e/phase-17-auto-moderation.ps1 -AdminEmail <admin> -AdminPassword <password> -AdminTotpSecret <base32 secret>
 ```
 
 Notes on the scripts:
 - The TOTP secret is the Base32 string shown at enrollment ("enter this key manually"). Save it in your password manager when you enroll the local admin.
 - Phase 13 expects the fast rollup settings the start script uses, and a rate limit high enough for 300 synthetic visitors. Add `-e RateLimiting__AnalyticsPermitsPerMinute=5000` to the app container for that run, or accept a few rate-limit failures.
 - The real-browser tracking check is `node scripts/e2e/phase-13-browser-tracking.mjs`. It needs `playwright-core` (`PLAYWRIGHT_CORE_PATH`) and Edge or Chrome.
+- Phase 17 switches the service to "approve" for a few checks, which would publish any other upcoming pending event that passes the terms. It therefore skips those checks when other upcoming events wait for review, unless you add `-AllowApprovingOtherEvents`. It restarts the app container once, restores your settings and deletes its test events.
 
 Load test (optional; see [docs/phases/phase-14.md](phases/phase-14.md)): add 10,000 events with `--seed-load 10000`, run `scripts/perf/feed-load.js` with the `grafana/k6` image, then reset the demo data.
 

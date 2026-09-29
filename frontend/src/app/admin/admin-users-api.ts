@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { UserRole } from '../auth/auth.models';
 import { OwnerEventStatus } from '../owner/owner-events-api';
+import { AutoModerationMode, MODE_LABELS, describeRunSummary } from './auto-moderation-api';
 
 export interface AdminUserSummary {
   id: string;
@@ -24,8 +25,9 @@ export interface AdminUserPage {
 
 export interface AuditEntry {
   id: string;
-  actorId: string;
-  actorName: string;
+  /** Null when the automatic event approval service acted. */
+  actorId: string | null;
+  actorName: string | null;
   action: string;
   targetType: string;
   targetId: string;
@@ -98,9 +100,16 @@ export const AUDIT_LABELS: Record<string, string> = {
   'event.highlighted': 'הוספה לבחירות העורכים',
   'event.unhighlighted': 'הסרה מבחירות העורכים',
   'event.deleted': 'מחיקת אירוע',
+  'automoderation.settings_changed': 'שינוי הגדרות האישור האוטומטי',
+  'automoderation.run': 'הרצה ידנית של האישור האוטומטי',
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = { BusinessOwner: 'בעל עסק', Admin: 'מנהל' };
+
+/** Who acted: the administrator's name, or the automatic event approval service. */
+export function auditActor(entry: AuditEntry): string {
+  return entry.actorName ?? 'אישור אוטומטי';
+}
 
 /** One readable line from an audit entry's JSON details. */
 export function describeAudit(entry: AuditEntry): string {
@@ -118,7 +127,29 @@ export function describeAudit(entry: AuditEntry): string {
     }
     case 'event.rejected':
       return [text('title'), text('rejectionReason') && `סיבה: ${text('rejectionReason')}`].filter(Boolean).join('. ');
+    case 'automoderation.run': {
+      const count = (key: string) => (typeof details[key] === 'number' ? (details[key] as number) : 0);
+      const mode: AutoModerationMode = text('mode') === 'Approve' ? 'Approve' : 'NotesOnly';
+      return describeRunSummary({ mode, checked: count('checked'), approved: count('approved'), wouldApprove: count('wouldApprove'), held: count('held') });
+    }
+    case 'automoderation.settings_changed':
+      return describeSettingsChange(details['changes']);
     default:
       return text('title');
   }
+}
+
+/** "מצב: מהערות בלבד לאישור אוטומטי. עודכנו עוד 2 הגדרות" */
+function describeSettingsChange(changes: unknown): string {
+  if (!changes || typeof changes !== 'object') return '';
+  const fields = changes as Record<string, { from?: unknown; to?: unknown }>;
+  const parts: string[] = [];
+  const mode = fields['mode'];
+  if (mode) {
+    const label = (value: unknown) => (MODE_LABELS as Record<string, string>)[String(value)] ?? String(value);
+    parts.push(`מצב: מ${label(mode.from)} ל${label(mode.to)}`);
+  }
+  const others = Object.keys(fields).filter((field) => field !== 'mode').length;
+  if (others > 0) parts.push(others === 1 ? `עודכנה ${mode ? 'עוד ' : ''}הגדרה אחת` : `עודכנו ${mode ? 'עוד ' : ''}${others} הגדרות`);
+  return parts.join('. ');
 }

@@ -115,7 +115,7 @@
         <ul class="timeline">
           @for (entry of d.audit; track entry.id) {
             <li>
-              <span class="when">{{ when(entry.createdAt) }}, {{ entry.actorName }}</span>
+              <span class="when">{{ when(entry.createdAt) }}, {{ actor(entry) }}</span>
               <span class="what">{{ auditLabels[entry.action] ?? entry.action }}</span>
               @if (describe(entry); as line) { <span class="detail">{{ line }}</span> }
             </li>
