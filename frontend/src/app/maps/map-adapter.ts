@@ -77,8 +77,10 @@ export class GoogleMapsAdapter implements MapAdapter {
         position,
         title: group.events.length === 1 ? group.events[0].title : `${group.events.length} אירועים`,
         content: group.events.length > 1 ? clusterBadge(group.events.length) : undefined,
+        // Clickable markers also get keyboard focus and arrow-key navigation from Google Maps.
+        gmpClickable: true,
       });
-      marker.addListener('click', () => {
+      marker.addEventListener('gmp-click', () => {
         if (spread && group.bounds) {
           // A cluster of separate places: zoom in until it splits.
           map.fitBounds(

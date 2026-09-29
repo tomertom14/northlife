@@ -11,7 +11,7 @@ Prerequisites: Docker Desktop and PowerShell. The .NET 10 SDK and Node 24 are on
    - `Authentication__JwtKey`: 32 or more random characters.
    - the five `BootstrapAdmin__*` values.
    - `Demo__OwnerPassword`: the password for the demo business accounts.
-   - Optional:
+   - Optional (see [section 4](#4-google-services-locally)):
      - `GoogleMaps__ApiKey` and `GoogleMaps__MapId`, for the map page. Without them the map says it is unavailable.
      - `Google__ClientId`, for Google sign-in. Without it the Google button is hidden.
 2. Start everything:
@@ -172,15 +172,25 @@ Notes on the scripts:
 
 Load test (optional; see [docs/phases/phase-14.md](phases/phase-14.md)): add 10,000 events with `--seed-load 10000`, run `scripts/perf/feed-load.js` with the `grafana/k6` image, then reset the demo data.
 
-## 4. What cannot be checked locally
+## 4. Google services locally
+
+The map and Google sign-in work on `http://localhost:10000` with your own Google Cloud values. Put them in `.env` (never in `.env.example`, which is committed) and restart with `scripts/local/start-stack.ps1`; the browser reads them from `/api/config/public`, so no rebuild is needed.
+
+| Setting | How to create it |
+| --- | --- |
+| `GoogleMaps__ApiKey` | Enable the **Maps JavaScript API** in a project with billing, create an API key, restrict it to the website `http://localhost:10000/*` (add the deployed address later) and to the Maps JavaScript API. |
+| `GoogleMaps__MapId` | `DEMO_MAP_ID` (Google's test ID) is enough locally. For deployment, create a JavaScript map ID in Map Management. |
+| `Google__ClientId` | Google Auth Platform: consent screen with audience **External**, your Gmail under **Test users**, then a **Web application** client whose authorised JavaScript origins are **both** `http://localhost` and `http://localhost:10000`. No redirect URI. The client secret is not used anywhere. |
+
+Google requires `Referrer-Policy: no-referrer-when-downgrade` when sign-in is tested on plain `http://localhost`; the app sends it only for `localhost` and `127.0.0.1`.
+
+## 5. What cannot be checked locally
 
 | Item | Needs | Where it is handled |
 | --- | --- | --- |
-| Google sign-in end to end | A Google OAuth client ID with `http://localhost:10000` as an authorised origin | Phase 16 checklist |
-| Map page and clusters | A Google Maps JavaScript API key and a vector Map ID | Phase 16 checklist |
 | Real email delivery | A Brevo API key and verified sender (locally Mailpit catches everything) | Phase 16 checklist |
 
-## 5. Evidence
+## 6. Evidence
 
 | Evidence | Where |
 | --- | --- |

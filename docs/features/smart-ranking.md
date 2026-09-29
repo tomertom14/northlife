@@ -39,7 +39,7 @@ An event at the top of the feed gets more clicks partly *because* it is at the t
 
 Two measures prevent this:
 - **Impressions add no popularity.** Being shown is not interest.
-- **A feed click is divided by the attention its position gets**: weight 3 / θ_k, clipped at 5. This is inverse propensity weighting (IPW); the clip bounds the variance a rarely seen position can add.
+- **A feed click is divided by the attention its position gets**: weight 3 · min(1 / θ_k, 5). This is inverse propensity weighting (IPW); capping the multiplier 1 / θ_k at 5 bounds the variance a rarely seen position can add.
 
 The worker re-estimates θ_k every six hours from the last 30 days of traffic.
 
