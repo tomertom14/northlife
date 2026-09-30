@@ -32,6 +32,7 @@ Phase 16 (deployment) follows local QA; see [docs/local-qa.md](docs/local-qa.md)
   - [Automatic event approval](docs/features/auto-moderation.md)
   - [Places](docs/features/places.md)
 - [Recommendation offline evaluation](docs/evaluation/recommendations.md)
+- [Lighthouse evaluation](docs/evaluation/lighthouse.md)
 - [Local QA guide](docs/local-qa.md)
 - [Deployment and operations](docs/deployment.md)
 

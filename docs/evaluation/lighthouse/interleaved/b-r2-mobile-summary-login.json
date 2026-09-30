@@ -1,0 +1,18 @@
+[
+  {
+    "page": "login",
+    "formFactor": "mobile",
+    "runs": 1,
+    "performance": 75,
+    "accessibility": 100,
+    "bestPractices": 100,
+    "seo": 100,
+    "fcpMs": 2316,
+    "lcpMs": 3365,
+    "tbtMs": 549,
+    "cls": 0.015,
+    "speedIndexMs": 2316,
+    "mainTransferKb": 116,
+    "benchmarkIndex": 949
+  }
+]

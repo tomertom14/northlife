@@ -1,3 +1,5 @@
+@use 'fonts';
+
 // NorthLife "Live Sky" tokens. The sky palettes themselves live in app/public/sky.ts
 // because they change at runtime with the selected time.
 :root {

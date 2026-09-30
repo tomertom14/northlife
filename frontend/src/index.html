@@ -8,9 +8,21 @@
   <meta name="description" content="אירועים, פעילויות וחוויות בצפון ישראל">
   <meta name="theme-color" content="#1b2440">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&family=Karantina:wght@300;700&display=swap">
+  <!-- Fonts are self-hosted (src/fonts.scss). Preloading them lets them arrive with the app
+       bundle, so text is painted once in its final font and does not shift. The Latin subsets
+       are needed too: they hold the digits, spaces and punctuation of Hebrew text. -->
+  <link rel="preload" href="fonts/ibm-plex-sans-hebrew-400-hebrew-08779339.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/ibm-plex-sans-hebrew-500-hebrew-3f85b2d8.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/ibm-plex-sans-hebrew-600-hebrew-2a0832e3.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/ibm-plex-sans-hebrew-700-hebrew-7127a3cf.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/karantina-300-hebrew-c1e6e387.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/karantina-700-hebrew-0d8ca903.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/ibm-plex-sans-hebrew-400-latin-f3f80a78.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/ibm-plex-sans-hebrew-500-latin-f21bfcb2.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/ibm-plex-sans-hebrew-600-latin-8216c868.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/ibm-plex-sans-hebrew-700-latin-a07b1769.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/karantina-300-latin-0434cf6a.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/karantina-700-latin-e25d8653.woff2" as="font" type="font/woff2" crossorigin>
 </head>
 <body>
   <app-root></app-root>

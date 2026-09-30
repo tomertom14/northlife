@@ -15,6 +15,8 @@ const place = places.items.find((item) => item.name.includes('גליל לייב'
 const details = await (await fetch(`${base}/api/places/${place.id}`)).json();
 const eventId = details.upcomingEvents[0]?.id;
 
+// PAGES=home,event limits a run to some pages, for example to repeat one that a busy host disturbed.
+const only = (process.env.PAGES ?? '').split(',').map((name) => name.trim()).filter(Boolean);
 const pages = [
   ['home', '/'],
   ...(eventId ? [['event', `/events/${eventId}`]] : []),
@@ -22,7 +24,7 @@ const pages = [
   ['place', `/places/${place.id}`],
   ['map', '/map'],
   ['login', '/manage/login'],
-];
+].filter(([name]) => only.length === 0 || only.includes(name));
 
 const median = (values) => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -71,4 +73,6 @@ for (const [name, path] of pages) {
   console.log(`${formFactor} ${name}: P${row.performance} A${row.accessibility} BP${row.bestPractices} SEO${row.seo} | FCP ${row.fcpMs} LCP ${row.lcpMs} TBT ${row.tbtMs} CLS ${row.cls} | main.js ${row.mainTransferKb} KB`);
 }
 
-fs.writeFileSync(`${out}/${tag}-${formFactor}-summary.json`, JSON.stringify(summary, null, 2));
+// A partial run writes its own summary, so it never overwrites the full one.
+const suffix = only.length ? `-${only.join('-')}` : '';
+fs.writeFileSync(`${out}/${tag}-${formFactor}-summary${suffix}.json`, JSON.stringify(summary, null, 2));
