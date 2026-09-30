@@ -56,6 +56,8 @@ export interface EventDetails extends EventSummary {
   longitude: number;
   organizerName: string;
   tags: string[];
+  /** The place the event happens at, when that place is public. */
+  place?: { id: string; name: string } | null;
 }
 
 export interface PagedResponse<T> {

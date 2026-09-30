@@ -1,0 +1,70 @@
+<div class="manage-page">
+  <header class="page-head">
+    <div>
+      <h1>המקומות שלי</h1>
+      <p class="lead">{{ auth.user()?.businessName }}: עמוד לכל מקום, עם שעות פתיחה, הטבות לסטודנטים והאירועים שמתקיימים בו.</p>
+    </div>
+    <div class="head-actions">
+      <button type="button" class="btn btn-primary" (click)="startCreate()">מקום חדש</button>
+      <a class="btn" routerLink="/manage/dashboard">האירועים שלי</a>
+    </div>
+  </header>
+
+  <div id="place-form-anchor" class="form-anchor">
+    @if (formOpen()) {
+      <app-place-form
+        [place]="editing()"
+        [saving]="saving()"
+        [serverErrors]="serverErrors()"
+        (save)="save($event)"
+        (cancel)="closeForm()" />
+    }
+  </div>
+
+  <section class="list-section" aria-labelledby="my-places-title">
+    <h2 id="my-places-title">המקומות</h2>
+
+    @if (loading()) {
+      <p class="muted" role="status">טוענים את המקומות…</p>
+    } @else if (loadFailed()) {
+      <div class="empty">
+        <p class="notice notice-error" role="alert">המקומות לא נטענו. בדקו את החיבור ונסו שוב.</p>
+        <button type="button" class="btn" (click)="load()">טעינה מחדש</button>
+      </div>
+    } @else if (places().length === 0) {
+      <div class="empty">
+        <p class="empty-title">עוד לא הוספתם מקומות</p>
+        <p class="muted">מסעדה, בית קפה, בר, סטודיו או שירות: מקום חדש נשלח לבדיקה של צוות NorthLife ומופיע באתר אחרי האישור.</p>
+        <button type="button" class="btn btn-primary" (click)="startCreate()">מקום חדש</button>
+      </div>
+    } @else {
+      <ul class="items">
+        @for (place of places(); track place.id) {
+          <li class="item">
+            <img class="thumb" [appPrivateImage]="place.imageUrl" [category]="cover[place.category]" alt="" width="160" height="100" />
+            <div class="item-main">
+              <app-status-badge [status]="place.status" />
+              <h3>{{ place.name }}</h3>
+              <p class="meta">{{ labels[place.category] }}, {{ place.locality }}</p>
+              @if (place.rejectionReason) {
+                <p class="reason"><strong>סיבת הדחייה:</strong> {{ place.rejectionReason }}</p>
+              }
+            </div>
+            <div class="item-actions">
+              @if (place.status === 'Published') {
+                <a class="btn" [routerLink]="['/places', place.id]">צפייה באתר</a>
+              }
+              <button type="button" class="btn" (click)="edit(place)">עריכה</button>
+              @if (confirmDeleteId() === place.id) {
+                <button type="button" class="btn btn-danger" [disabled]="deletingId() === place.id" (click)="delete(place)">כן, למחוק</button>
+                <button type="button" class="btn btn-quiet" (click)="confirmDeleteId.set(null)">ביטול</button>
+              } @else {
+                <button type="button" class="btn btn-danger" (click)="askDelete(place)">מחיקה</button>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</div>

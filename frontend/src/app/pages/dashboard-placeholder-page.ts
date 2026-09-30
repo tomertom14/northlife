@@ -8,6 +8,7 @@ import { EventForm } from '../manage/event-form';
 import { StatTile, StatTiles } from '../manage/stat-tiles';
 import { StatusBadge } from '../manage/status-badge';
 import { OwnerEvent, OwnerEventInput, OwnerEventsApi } from '../owner/owner-events-api';
+import { OwnerPlace, OwnerPlacesApi } from '../owner/owner-places-api';
 import { Clock } from '../shared/clock';
 import { formatLongDate, formatTime } from '../shared/jerusalem-time';
 import { problemFieldErrors } from '../shared/problem-details';
@@ -28,6 +29,9 @@ export class DashboardPage implements OnInit {
   readonly auth = inject(AuthStore);
 
   readonly events = signal<OwnerEvent[]>([]);
+  /** For the event form's place picker; a failed load just hides the picker. */
+  readonly places = signal<OwnerPlace[]>([]);
+  private readonly placesApi = inject(OwnerPlacesApi);
   readonly loading = signal(true);
   readonly loadFailed = signal(false);
   readonly saving = signal(false);
@@ -54,6 +58,7 @@ export class DashboardPage implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    this.placesApi.list().subscribe({ next: (places) => this.places.set(places), error: () => this.places.set([]) });
     // The address may have been verified in another tab since sign-in.
     if (this.auth.user()?.emailConfirmed === false) this.auth.refreshUser().subscribe({ error: () => undefined });
   }

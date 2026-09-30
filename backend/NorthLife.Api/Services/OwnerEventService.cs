@@ -47,9 +47,11 @@ public sealed class OwnerEventService(
             ownerId,
             isAdmin: false,
             cancellationToken);
+        await RequireOwnPlaceAsync(ownerId, request.PlaceId, cancellationToken);
 
         var eventItem = new Event
         {
+            PlaceId = request.PlaceId,
             OwnerId = ownerId,
             Title = normalized.Title,
             Description = normalized.Description,
@@ -86,7 +88,9 @@ public sealed class OwnerEventService(
             ownerId,
             isAdmin: false,
             cancellationToken);
+        await RequireOwnPlaceAsync(ownerId, request.PlaceId, cancellationToken);
 
+        eventItem.PlaceId = request.PlaceId;
         eventItem.Title = normalized.Title;
         eventItem.Description = normalized.Description;
         eventItem.Category = request.Category;
@@ -126,6 +130,19 @@ public sealed class OwnerEventService(
                 cancellationToken))
         {
             throw new EmailNotConfirmedException();
+        }
+    }
+
+    /// <summary>An event may be linked only to one of the owner's own places (pending ones included).</summary>
+    private async Task RequireOwnPlaceAsync(Guid ownerId, Guid? placeId, CancellationToken cancellationToken)
+    {
+        if (placeId is null) return;
+        if (!await dbContext.Places.AnyAsync(place => place.Id == placeId && place.OwnerId == ownerId, cancellationToken))
+        {
+            throw new OwnerEventValidationException(new Dictionary<string, string[]>
+            {
+                ["placeId"] = ["Choose one of your own places."],
+            });
         }
     }
 
@@ -171,7 +188,8 @@ public sealed class OwnerEventService(
             eventItem.Status,
             eventItem.RejectionReason,
             eventItem.UpdatedAtUtc,
-            eventItem.Revision);
+            eventItem.Revision,
+            eventItem.PlaceId);
 }
 
 public static class OwnerEventInputValidator

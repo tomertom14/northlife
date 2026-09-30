@@ -18,6 +18,16 @@ export const routes: Routes = [
         title: 'מפת אירועים | NorthLife',
       },
       { path: 'events/:id', component: EventDetailsPage, title: 'פרטי אירוע | NorthLife' },
+      {
+        path: 'places',
+        loadComponent: () => import('./pages/places-page').then((m) => m.PlacesPage),
+        title: 'מקומות בצפון | NorthLife',
+      },
+      {
+        path: 'places/:id',
+        loadComponent: () => import('./pages/place-details-page').then((m) => m.PlaceDetailsPage),
+        title: 'פרטי מקום | NorthLife',
+      },
     ],
   },
   {
@@ -101,6 +111,18 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/admin-auto-moderation-page').then((m) => m.AdminAutoModerationPage),
         canActivate: [adminGuard],
         title: 'אישור אוטומטי | NorthLife',
+      },
+      {
+        path: 'admin/places',
+        loadComponent: () => import('./pages/admin-places-page').then((m) => m.AdminPlacesPage),
+        canActivate: [adminGuard],
+        title: 'מקומות לבדיקה | NorthLife',
+      },
+      {
+        path: 'places',
+        loadComponent: () => import('./pages/owner-places-page').then((m) => m.OwnerPlacesPage),
+        canActivate: [authGuard],
+        title: 'המקומות שלי | NorthLife',
       },
       { path: '', pathMatch: 'full', redirectTo: 'login' },
     ],

@@ -484,6 +484,10 @@ namespace NorthLife.Api.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("owner_id");
 
+                    b.Property<Guid?>("PlaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("place_id");
+
                     b.Property<decimal>("Price")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")
@@ -543,6 +547,10 @@ namespace NorthLife.Api.Data.Migrations
 
                     b.HasIndex("ImageId")
                         .HasDatabaseName("ix_events_image_id");
+
+                    b.HasIndex("PlaceId")
+                        .HasDatabaseName("ix_events_place_id")
+                        .HasFilter("place_id IS NOT NULL AND deleted_at_utc IS NULL");
 
                     b.HasIndex("OwnerId", "UpdatedAtUtc")
                         .HasDatabaseName("ix_events_owner_updated")
@@ -803,6 +811,182 @@ namespace NorthLife.Api.Data.Migrations
                     b.ToTable("external_logins", (string)null);
                 });
 
+            modelBuilder.Entity("NorthLife.Api.Models.Place", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("address");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at_utc");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(3000)
+                        .HasColumnType("character varying(3000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Geohash")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("geohash")
+                        .UseCollation("C");
+
+                    b.Property<Guid>("ImageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("image_id");
+
+                    b.Property<string>("Instagram")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("instagram");
+
+                    b.Property<decimal>("Latitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)")
+                        .HasColumnName("latitude");
+
+                    b.Property<string>("Locality")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("locality");
+
+                    b.Property<decimal>("Longitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)")
+                        .HasColumnName("longitude");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("rejection_reason");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("revision");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("StudentPerk")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("student_perk");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<string>("Website")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("website");
+
+                    b.HasKey("Id")
+                        .HasName("pk_places");
+
+                    b.HasIndex("Geohash")
+                        .HasDatabaseName("ix_places_geohash")
+                        .HasFilter("deleted_at_utc IS NULL");
+
+                    b.HasIndex("ImageId")
+                        .HasDatabaseName("ix_places_image_id");
+
+                    b.HasIndex("OwnerId", "UpdatedAtUtc")
+                        .HasDatabaseName("ix_places_owner_updated")
+                        .HasFilter("deleted_at_utc IS NULL");
+
+                    b.HasIndex("Status", "Category", "Name")
+                        .HasDatabaseName("ix_places_status_category_name")
+                        .HasFilter("deleted_at_utc IS NULL");
+
+                    b.HasIndex("Status", "Locality", "Name")
+                        .HasDatabaseName("ix_places_status_locality_name")
+                        .HasFilter("deleted_at_utc IS NULL");
+
+                    b.ToTable("places", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_places_category", "category IN ('Food', 'Cafe', 'Nightlife', 'Classes', 'Sports', 'Culture', 'Outdoors', 'Services')");
+
+                            t.HasCheckConstraint("ck_places_latitude", "latitude BETWEEN -90 AND 90");
+
+                            t.HasCheckConstraint("ck_places_longitude", "longitude BETWEEN -180 AND 180");
+
+                            t.HasCheckConstraint("ck_places_revision", "revision >= 1");
+
+                            t.HasCheckConstraint("ck_places_status", "status IN ('Pending', 'Published', 'Rejected')");
+                        });
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.PlaceOpeningHours", b =>
+                {
+                    b.Property<Guid>("PlaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("place_id");
+
+                    b.Property<short>("DayOfWeek")
+                        .HasColumnType("smallint")
+                        .HasColumnName("day_of_week");
+
+                    b.Property<short>("OpensMinute")
+                        .HasColumnType("smallint")
+                        .HasColumnName("opens_minute");
+
+                    b.Property<short>("ClosesMinute")
+                        .HasColumnType("smallint")
+                        .HasColumnName("closes_minute");
+
+                    b.HasKey("PlaceId", "DayOfWeek", "OpensMinute")
+                        .HasName("pk_place_opening_hours");
+
+                    b.ToTable("place_opening_hours", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_place_opening_hours_closes", "closes_minute BETWEEN 0 AND 1439");
+
+                            t.HasCheckConstraint("ck_place_opening_hours_day", "day_of_week BETWEEN 0 AND 6");
+
+                            t.HasCheckConstraint("ck_place_opening_hours_opens", "opens_minute BETWEEN 0 AND 1439");
+                        });
+                });
+
             modelBuilder.Entity("NorthLife.Api.Models.PositionPropensityRow", b =>
                 {
                     b.Property<short>("Surface")
@@ -975,9 +1159,17 @@ namespace NorthLife.Api.Data.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_events_users_owner_id");
 
+                    b.HasOne("NorthLife.Api.Models.Place", "Place")
+                        .WithMany()
+                        .HasForeignKey("PlaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_events_places_place_id");
+
                     b.Navigation("Image");
 
                     b.Navigation("Owner");
+
+                    b.Navigation("Place");
                 });
 
             modelBuilder.Entity("NorthLife.Api.Models.EventImage", b =>
@@ -1051,6 +1243,37 @@ namespace NorthLife.Api.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("NorthLife.Api.Models.Place", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.EventImage", "Image")
+                        .WithMany("Places")
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_places_event_images_image_id");
+
+                    b.HasOne("NorthLife.Api.Models.AppUser", "Owner")
+                        .WithMany("Places")
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_places_users_owner_id");
+
+                    b.Navigation("Image");
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.PlaceOpeningHours", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.Place", null)
+                        .WithMany("OpeningHours")
+                        .HasForeignKey("PlaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_place_opening_hours_places_place_id");
+                });
+
             modelBuilder.Entity("NorthLife.Api.Models.RecoveryCode", b =>
                 {
                     b.HasOne("NorthLife.Api.Models.AppUser", "User")
@@ -1081,6 +1304,8 @@ namespace NorthLife.Api.Data.Migrations
 
                     b.Navigation("ExternalLogins");
 
+                    b.Navigation("Places");
+
                     b.Navigation("RecoveryCodes");
 
                     b.Navigation("Tokens");
@@ -1091,6 +1316,13 @@ namespace NorthLife.Api.Data.Migrations
             modelBuilder.Entity("NorthLife.Api.Models.EventImage", b =>
                 {
                     b.Navigation("Events");
+
+                    b.Navigation("Places");
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.Place", b =>
+                {
+                    b.Navigation("OpeningHours");
                 });
 #pragma warning restore 612, 618
         }

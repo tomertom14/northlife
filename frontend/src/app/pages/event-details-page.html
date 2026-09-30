@@ -45,7 +45,12 @@
             </div>
             <div>
               <dt>איפה</dt>
-              <dd><strong>{{ item.venueName }}</strong>{{ item.address }}, {{ item.locality }}</dd>
+              <dd>
+                <strong>{{ item.venueName }}</strong>{{ item.address }}, {{ item.locality }}
+                @if (item.place) {
+                  <a class="place-link" [routerLink]="['/places', item.place.id]">לדף המקום: {{ item.place.name }}</a>
+                }
+              </dd>
             </div>
             <div>
               <dt>מחיר</dt>

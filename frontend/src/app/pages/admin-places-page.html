@@ -1,0 +1,120 @@
+<div class="manage-page">
+  <header class="page-head">
+    <div>
+      <h1>מקומות לבדיקה</h1>
+      <p class="lead">מקום חדש או ערוך מופיע באתר רק אחרי אישור.</p>
+    </div>
+  </header>
+  <app-admin-nav />
+
+  <section class="list-section" aria-labelledby="places-queue-title">
+    <div class="list-head">
+      <div>
+        <h2 id="places-queue-title">מקומות</h2>
+        @if (!loading() && !loadFailed()) {
+          <p class="muted">{{ resultLabel() }}</p>
+        }
+      </div>
+      <form class="filters" (ngSubmit)="load()">
+        <div class="field">
+          <label for="places-status">סטטוס</label>
+          <select class="input" id="places-status" name="status" [(ngModel)]="status" (ngModelChange)="load()">
+            <option value="">הכול</option>
+            <option value="Pending">ממתינים לאישור</option>
+            <option value="Published">פורסמו</option>
+            <option value="Rejected">נדחו</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="places-search">חיפוש</label>
+          <input class="input" id="places-search" name="search" type="search" maxlength="100" placeholder="שם, יישוב או עסק" [(ngModel)]="search" />
+        </div>
+        <button type="submit" class="btn">חיפוש</button>
+      </form>
+    </div>
+
+    @if (loading()) {
+      <p class="muted" role="status">טוענים את המקומות…</p>
+    } @else if (loadFailed()) {
+      <div class="empty">
+        <p class="notice notice-error" role="alert">הרשימה לא נטענה. בדקו את החיבור ונסו שוב.</p>
+        <button type="button" class="btn" (click)="load()">טעינה מחדש</button>
+      </div>
+    } @else if (places().length === 0) {
+      <div class="empty">
+        <p class="empty-title">{{ status === 'Pending' ? 'אין מקומות שממתינים לבדיקה' : 'אין מקומות שמתאימים לסינון' }}</p>
+        <p class="muted">מקומות חדשים מבעלי עסקים יופיעו כאן.</p>
+      </div>
+    } @else {
+      <ul class="items">
+        @for (place of places(); track place.id) {
+          <li class="item">
+            <img class="thumb" [appPrivateImage]="place.imageUrl" [category]="cover[place.category]" alt="" width="160" height="100" />
+            <div class="item-main">
+              <div class="badges"><app-status-badge [status]="place.status" /></div>
+              <h3>{{ place.name }}</h3>
+              <p class="meta">{{ labels[place.category] }}, {{ place.locality }} · {{ place.businessName }}</p>
+              @if (place.rejectionReason) {
+                <p class="reason"><strong>סיבת הדחייה:</strong> {{ place.rejectionReason }}</p>
+              }
+              <button type="button" class="btn btn-quiet details-toggle" [attr.aria-expanded]="expandedId() === place.id" (click)="toggleDetails(place)">
+                {{ expandedId() === place.id ? 'הסתרת הפרטים' : 'כל הפרטים' }}
+              </button>
+              @if (expandedId() === place.id) {
+                <div class="place-details">
+                  <p>{{ place.description }}</p>
+                  <p class="meta">{{ place.address }}</p>
+                  @if (place.studentPerk) { <p class="meta">הטבה לסטודנטים: {{ place.studentPerk }}</p> }
+                  @if (place.phone) { <p class="meta">טלפון: <span dir="ltr">{{ place.phone }}</span></p> }
+                  @if (place.website) { <p class="meta">אתר: <span dir="ltr">{{ place.website }}</span></p> }
+                  @if (place.instagram) { <p class="meta">אינסטגרם: <span dir="ltr">&#64;{{ place.instagram }}</span></p> }
+                  <ul class="meta">
+                    @for (row of hoursRows(place.hours); track row.day) {
+                      <li>{{ row.name }}: <span dir="ltr">{{ row.text }}</span></li>
+                    }
+                  </ul>
+                </div>
+              }
+            </div>
+            <div class="item-actions">
+              @if (place.status === 'Pending') {
+                <button type="button" class="btn btn-primary" [disabled]="busyId() === place.id" (click)="approve(place)">אישור ופרסום</button>
+                <button type="button" class="btn btn-danger" [disabled]="busyId() === place.id" (click)="startReject(place)">דחייה</button>
+              }
+              @if (place.status === 'Published') {
+                <a class="btn" [routerLink]="['/places', place.id]">צפייה באתר</a>
+              }
+              @if (confirmDeleteId() === place.id) {
+                <button type="button" class="btn btn-danger" [disabled]="busyId() === place.id" (click)="delete(place)">כן, למחוק</button>
+                <button type="button" class="btn btn-quiet" (click)="confirmDeleteId.set(null)">ביטול</button>
+              } @else {
+                <button type="button" class="btn btn-danger" (click)="confirmDeleteId.set(place.id)">מחיקה</button>
+              }
+            </div>
+
+            @if (rejectingId() === place.id) {
+              <div class="reject-box">
+                <label class="field" [for]="'place-reason-' + place.id">מה צריך לתקן? בעל העסק יראה את ההסבר הזה</label>
+                <textarea
+                  class="input"
+                  rows="3"
+                  maxlength="1000"
+                  [id]="'place-reason-' + place.id"
+                  [name]="'place-reason-' + place.id"
+                  [(ngModel)]="rejectionReason"
+                  [attr.aria-invalid]="rejectError() ? true : null"></textarea>
+                @if (rejectError()) {
+                  <span class="field-error" role="alert">{{ rejectError() }}</span>
+                }
+                <div class="row-actions">
+                  <button type="button" class="btn btn-danger" [disabled]="busyId() === place.id" (click)="reject(place)">שליחת הדחייה</button>
+                  <button type="button" class="btn btn-quiet" (click)="rejectingId.set(null)">ביטול</button>
+                </div>
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</div>

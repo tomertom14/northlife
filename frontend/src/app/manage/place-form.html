@@ -1,0 +1,156 @@
+<form class="event-form" (ngSubmit)="submit()" [attr.aria-labelledby]="formId + '-title'">
+  <div class="form-head">
+    <h2 [id]="formId + '-title'">{{ editing() ? 'עריכת מקום' : 'מקום חדש' }}</h2>
+    <button type="button" class="btn btn-quiet" (click)="cancel.emit()">סגירה בלי לשמור</button>
+  </div>
+
+  @if (republishWarning()) {
+    <p class="notice notice-warning">המקום מפורסם כרגע. אחרי השמירה הוא יחזור לבדיקה ויוסתר מהאתר עד לאישור מחדש.</p>
+  }
+  @if (errorCount() > 0) {
+    <p class="notice notice-error" role="alert">
+      {{ errorCount() === 1 ? 'יש לתקן שדה אחד לפני השמירה.' : 'יש לתקן ' + errorCount() + ' שדות לפני השמירה.' }}
+    </p>
+  }
+
+  <fieldset>
+    <legend>מה</legend>
+    <div class="grid">
+      <div class="field wide">
+        <label [for]="fieldId('name')">שם המקום</label>
+        <input class="input" [id]="fieldId('name')" name="name" maxlength="150" [(ngModel)]="model.name"
+          [attr.aria-invalid]="errors()['name'] ? true : null" [attr.aria-describedby]="errorId('name')" (input)="clearError('name')" />
+        @if (errors()['name']) { <span class="field-error" [id]="errorId('name')">{{ errors()['name'] }}</span> }
+      </div>
+
+      <div class="field">
+        <label [for]="fieldId('category')">סוג המקום</label>
+        <select class="input" [id]="fieldId('category')" name="category" [(ngModel)]="model.category">
+          @for (category of categories; track category) {
+            <option [ngValue]="category">{{ categoryLabels[category] }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="field">
+        <label [for]="fieldId('studentPerk')">הטבה לסטודנטים <span class="field-hint">לא חובה</span></label>
+        <input class="input" [id]="fieldId('studentPerk')" name="studentPerk" maxlength="200" placeholder="למשל: 10% הנחה בהצגת תעודה" [(ngModel)]="model.studentPerk"
+          [attr.aria-invalid]="errors()['studentPerk'] ? true : null" [attr.aria-describedby]="errorId('studentPerk')" (input)="clearError('studentPerk')" />
+        @if (errors()['studentPerk']) { <span class="field-error" [id]="errorId('studentPerk')">{{ errors()['studentPerk'] }}</span> }
+      </div>
+
+      <div class="field wide">
+        <label [for]="fieldId('description')">תיאור</label>
+        <textarea class="input" [id]="fieldId('description')" name="description" maxlength="3000" rows="5" [(ngModel)]="model.description"
+          [attr.aria-invalid]="errors()['description'] ? true : null" [attr.aria-describedby]="errorId('description')" (input)="clearError('description')"></textarea>
+        @if (errors()['description']) { <span class="field-error" [id]="errorId('description')">{{ errors()['description'] }}</span> }
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>שעות פתיחה <span class="field-hint">לפי שעון ישראל</span></legend>
+    <p class="hours-help">
+      שעת סגירה מוקדמת משעת הפתיחה פירושה סגירה אחרי חצות, למשל 20:00–02:00. לפתיחה של 24 שעות כתבו 00:00–00:00. יום בלי טווחים מוצג כסגור.
+    </p>
+    <div class="hours-editor" [attr.aria-invalid]="errors()['hours'] ? true : null" [attr.aria-describedby]="errorId('hours')" tabindex="-1">
+      @for (day of model.days; track day.day) {
+        <div class="day-row">
+          <span class="day-name" [id]="formId + '-day-' + day.day">{{ day.name }}</span>
+          <div class="intervals">
+            @for (interval of day.intervals; track $index) {
+              <span class="interval" role="group" [attr.aria-labelledby]="formId + '-day-' + day.day">
+                <input class="input time" type="time" [name]="'opens-' + day.day + '-' + $index" [(ngModel)]="interval.opens" aria-label="שעת פתיחה" (input)="clearError('hours')" />
+                <span aria-hidden="true">–</span>
+                <input class="input time" type="time" [name]="'closes-' + day.day + '-' + $index" [(ngModel)]="interval.closes" aria-label="שעת סגירה" (input)="clearError('hours')" />
+                <button type="button" class="btn btn-quiet small" (click)="removeInterval(day, $index)">הסרה</button>
+              </span>
+            } @empty {
+              <span class="closed">סגור</span>
+            }
+          </div>
+          @if (day.intervals.length < 3) {
+            <button type="button" class="btn btn-quiet small" (click)="addInterval(day)">הוספת טווח</button>
+          }
+        </div>
+      }
+    </div>
+    @if (errors()['hours']) { <span class="field-error" [id]="errorId('hours')">{{ errors()['hours'] }}</span> }
+    <button type="button" class="btn small copy" (click)="copySundayToWeekdays()">העתקת שעות יום ראשון לימים שני–חמישי</button>
+  </fieldset>
+
+  <fieldset>
+    <legend>איפה</legend>
+    <div class="grid">
+      <div class="field">
+        <label [for]="fieldId('locality')">יישוב</label>
+        <input class="input" [id]="fieldId('locality')" name="locality" maxlength="120" [attr.list]="formId + '-localities'" [(ngModel)]="model.locality"
+          [attr.aria-invalid]="errors()['locality'] ? true : null" [attr.aria-describedby]="errorId('locality')" (input)="clearError('locality')" />
+        <datalist [id]="formId + '-localities'">
+          @for (place of localities; track place) { <option [value]="place"></option> }
+        </datalist>
+        @if (errors()['locality']) { <span class="field-error" [id]="errorId('locality')">{{ errors()['locality'] }}</span> }
+      </div>
+      <div class="field">
+        <label [for]="fieldId('address')">כתובת</label>
+        <input class="input" [id]="fieldId('address')" name="address" maxlength="300" [(ngModel)]="model.address"
+          [attr.aria-invalid]="errors()['address'] ? true : null" [attr.aria-describedby]="errorId('address')" (input)="clearError('address')" />
+        @if (errors()['address']) { <span class="field-error" [id]="errorId('address')">{{ errors()['address'] }}</span> }
+      </div>
+      <div class="wide">
+        <app-location-picker [latitude]="model.latitude ?? 33.2" [longitude]="model.longitude ?? 35.5" (coordinatesSelected)="coordinatesSelected($event)" />
+      </div>
+      <div class="field">
+        <label [for]="fieldId('latitude')">קו רוחב</label>
+        <input class="input" type="number" inputmode="decimal" step="0.000001" [id]="fieldId('latitude')" name="latitude" [(ngModel)]="model.latitude"
+          [attr.aria-invalid]="errors()['latitude'] ? true : null" [attr.aria-describedby]="errorId('latitude')" (input)="clearError('latitude')" />
+        @if (errors()['latitude']) { <span class="field-error" [id]="errorId('latitude')">{{ errors()['latitude'] }}</span> }
+      </div>
+      <div class="field">
+        <label [for]="fieldId('longitude')">קו אורך</label>
+        <input class="input" type="number" inputmode="decimal" step="0.000001" [id]="fieldId('longitude')" name="longitude" [(ngModel)]="model.longitude"
+          [attr.aria-invalid]="errors()['longitude'] ? true : null" [attr.aria-describedby]="errorId('longitude')" (input)="clearError('longitude')" />
+        @if (errors()['longitude']) { <span class="field-error" [id]="errorId('longitude')">{{ errors()['longitude'] }}</span> }
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>יצירת קשר ותמונה</legend>
+    <div class="grid">
+      <div class="field">
+        <label [for]="fieldId('phone')">טלפון <span class="field-hint">לא חובה</span></label>
+        <input class="input" type="tel" dir="ltr" [id]="fieldId('phone')" name="phone" maxlength="30" [(ngModel)]="model.phone"
+          [attr.aria-invalid]="errors()['phone'] ? true : null" [attr.aria-describedby]="errorId('phone')" (input)="clearError('phone')" />
+        @if (errors()['phone']) { <span class="field-error" [id]="errorId('phone')">{{ errors()['phone'] }}</span> }
+      </div>
+      <div class="field">
+        <label [for]="fieldId('instagram')">אינסטגרם <span class="field-hint">שם משתמש, לא חובה</span></label>
+        <input class="input" dir="ltr" [id]="fieldId('instagram')" name="instagram" maxlength="31" placeholder="@my.place" [(ngModel)]="model.instagram"
+          [attr.aria-invalid]="errors()['instagram'] ? true : null" [attr.aria-describedby]="errorId('instagram')" (input)="clearError('instagram')" />
+        @if (errors()['instagram']) { <span class="field-error" [id]="errorId('instagram')">{{ errors()['instagram'] }}</span> }
+      </div>
+      <div class="field wide">
+        <label [for]="fieldId('website')">אתר <span class="field-hint">לא חובה</span></label>
+        <input class="input" type="url" dir="ltr" [id]="fieldId('website')" name="website" maxlength="300" placeholder="https://" [(ngModel)]="model.website"
+          [attr.aria-invalid]="errors()['website'] ? true : null" [attr.aria-describedby]="errorId('website')" (input)="clearError('website')" />
+        @if (errors()['website']) { <span class="field-error" [id]="errorId('website')">{{ errors()['website'] }}</span> }
+      </div>
+      <div class="field wide">
+        <span class="field-label">תמונת המקום</span>
+        <app-event-image-upload
+          [currentUrl]="place()?.imageUrl ?? null"
+          [category]="cover[model.category]"
+          [invalid]="!!errors()['imageId']"
+          [describedBy]="errorId('imageId')"
+          (uploaded)="imageUploaded($event)" />
+        @if (errors()['imageId']) { <span class="field-error" [id]="errorId('imageId')">{{ errors()['imageId'] }}</span> }
+      </div>
+    </div>
+  </fieldset>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary" [disabled]="saving()">{{ saving() ? 'שומרים…' : editing() ? 'שמירה ושליחה לאישור' : 'שליחה לאישור' }}</button>
+    <button type="button" class="btn" (click)="cancel.emit()">ביטול</button>
+  </div>
+</form>

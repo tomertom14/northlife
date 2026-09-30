@@ -1,6 +1,6 @@
 # Local QA before deployment
 
-This guide runs the complete product on your machine and walks through every feature added in phases 11–15 and 17. Deployment (phase 16) waits until this checklist passes.
+This guide runs the complete product on your machine and walks through every feature added in phases 11–15, 17 and 18. Deployment (phase 16) waits until this checklist passes.
 
 ## 1. Start the stack
 
@@ -151,10 +151,32 @@ The service starts in "הערות בלבד" (notes only): it writes notes but pu
 - [ ] Enter an invalid value, such as a similarity of 0.2, and save. **The field is marked with its allowed range.**
 - [ ] Switch back to "הערות בלבד" or "כבוי" when you are done, and delete the test events.
 
+### Places (phase 18)
+
+`-SeedDemo` adds 13 demo places, also to a database seeded before places existed.
+
+- [ ] Header → "מקומות".
+  - **Cards with the type, town, an open or closed line ("סגור עכשיו · נפתח ב-20:00") and a student-perk badge.**
+  - "פתוח עכשיו" keeps only open places; the two 24/7 places are always among them.
+  - "קרוב אליי" asks for your location and shows distances.
+  - The filters are in the address bar, so a filtered list can be shared.
+- [ ] Open "גליל לייב – בר הופעות".
+  - **Weekly hours with today in bold, late nights such as 20:00–03:00, the student perk, contact buttons and two upcoming events.**
+  - One of its events links back ("לדף המקום").
+- [ ] Map → "מקומות". **Clusters of places; clicking a marker opens the place.**
+- [ ] As owner1 → "המקומות שלי" → "מקום חדש".
+  - Enter an overlapping second interval on one day. **"יש טווחי שעות חופפים".**
+  - Save a valid place. **It is pending and not public.**
+  - In a new event, "אחד המקומות שלכם" fills the venue, town, address and pin.
+- [ ] As the administrator → "מקומות".
+  - Reject with a reason. **The owner sees the reason; editing sends the place back to review.**
+  - Approve. **The place appears in the directory; the audit log lists both actions.**
+- [ ] Suspend owner1 in "משתמשים". **Their places disappear too.** Lift the suspension.
+
 ## 3. Automated suites
 
 ```powershell
-npm test                                   # backend (288) and frontend (82) unit tests
+npm test                                   # backend (311) and frontend (89) unit tests
 powershell -File scripts/e2e/phase-11-identity.ps1 -AdminEmail <admin> -AdminPassword <password>
 powershell -File scripts/e2e/phase-12-admin-users.ps1 -AdminEmail <admin> -AdminPassword <password> -AdminTotpSecret <base32 secret>
 powershell -File scripts/e2e/phase-13-analytics.ps1 -AdminEmail <admin> -AdminPassword <password> -AdminTotpSecret <base32 secret>
@@ -162,6 +184,7 @@ powershell -File scripts/e2e/phase-14-ranking.ps1 -AdminEmail <admin> -AdminPass
 powershell -File scripts/e2e/phase-15-recommendations.ps1
 docker run --rm northlife:local --evaluate-recommendations /tmp/evaluation.md
 powershell -File scripts/e2e/phase-17-auto-moderation.ps1 -AdminEmail <admin> -AdminPassword <password> -AdminTotpSecret <base32 secret>
+powershell -File scripts/e2e/phase-18-places.ps1 -AdminEmail <admin> -AdminPassword <password> -AdminTotpSecret <base32 secret>
 ```
 
 Notes on the scripts:

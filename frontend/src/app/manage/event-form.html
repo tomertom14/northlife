@@ -79,6 +79,17 @@
   <fieldset>
     <legend>איפה</legend>
     <div class="grid">
+      @if (mode() === 'owner' && places().length > 0) {
+        <div class="field wide">
+          <label [for]="fieldId('placeId')">אחד המקומות שלכם <span class="field-hint">ממלא את הכתובת ומקשר לדף המקום</span></label>
+          <select class="input" [id]="fieldId('placeId')" name="placeId" [(ngModel)]="model.placeId" (ngModelChange)="placeSelected()">
+            <option value="">מקום אחר</option>
+            @for (place of places(); track place.id) {
+              <option [value]="place.id">{{ place.name }}, {{ place.locality }}</option>
+            }
+          </select>
+        </div>
+      }
       <div class="field">
         <label [for]="fieldId('venueName')">שם המקום</label>
         <input class="input" [id]="fieldId('venueName')" name="venueName" maxlength="200" [(ngModel)]="model.venueName"

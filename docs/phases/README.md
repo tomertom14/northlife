@@ -32,3 +32,4 @@ Do not mark a phase complete until its checks and all prerequisite regression ch
 | 15 | [Recommendations ("For You")](phase-15.md) |
 | 16 | Deployment, on hold until local QA passes |
 | 17 | [Automatic Event Approval](phase-17.md) |
+| 18 | [Places](phase-18.md) |

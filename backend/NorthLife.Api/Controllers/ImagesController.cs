@@ -66,13 +66,20 @@ public sealed class ImagesController(
             return NotFound();
         }
 
-        // Same visibility rule as the public feed: published, not ended, owner not suspended.
-        var isPublic = await dbContext.Events.AnyAsync(eventItem =>
-            eventItem.ImageId == id &&
-            eventItem.Status == EventStatus.Published &&
-            eventItem.EndAtUtc > now &&
-            eventItem.Owner.SuspendedAtUtc == null,
-            cancellationToken);
+        // Same visibility rule as the public feed and places directory: published, owner not suspended, and for
+        // events not ended.
+        var isPublic =
+            await dbContext.Events.AnyAsync(eventItem =>
+                eventItem.ImageId == id &&
+                eventItem.Status == EventStatus.Published &&
+                eventItem.EndAtUtc > now &&
+                eventItem.Owner.SuspendedAtUtc == null,
+                cancellationToken) ||
+            await dbContext.Places.AnyAsync(place =>
+                place.ImageId == id &&
+                place.Status == EventStatus.Published &&
+                place.Owner.SuspendedAtUtc == null,
+                cancellationToken);
         var isOwner = TryUserId(out var userId) && image.UploaderId == userId;
         var isAdmin = User.IsInRole(nameof(UserRole.Admin));
 

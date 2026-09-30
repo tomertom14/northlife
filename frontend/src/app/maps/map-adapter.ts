@@ -17,6 +17,10 @@ export interface MapRenderOptions {
   openEvent: (eventId: string) => void;
   /** Fit the viewport to the markers; otherwise the visitor's current viewport is kept. */
   fitToMarkers: boolean;
+  /** Link of one marker item; events by default, places on the places layer. */
+  hrefFor?: (id: string) => string;
+  /** Accessible title of a cluster marker, "12 אירועים" by default. */
+  countLabel?: (count: number) => string;
 }
 
 export interface LocationPickerHandle {
@@ -75,7 +79,9 @@ export class GoogleMapsAdapter implements MapAdapter {
       const marker = new AdvancedMarkerElement({
         map,
         position,
-        title: group.events.length === 1 ? group.events[0].title : `${group.events.length} אירועים`,
+        title: group.events.length === 1
+          ? group.events[0].title
+          : options.countLabel?.(group.events.length) ?? `${group.events.length} אירועים`,
         content: group.events.length > 1 ? clusterBadge(group.events.length) : undefined,
         // Clickable markers also get keyboard focus and arrow-key navigation from Google Maps.
         gmpClickable: true,
@@ -89,7 +95,7 @@ export class GoogleMapsAdapter implements MapAdapter {
           );
           return;
         }
-        info.setContent(popupContent(group, options.openEvent));
+        info.setContent(popupContent(group, options.openEvent, options.hrefFor ?? ((id) => `/events/${encodeURIComponent(id)}`)));
         info.open({ map, anchor: marker });
       });
       state.markers.push(marker);
@@ -169,13 +175,13 @@ function clusterBadge(count: number): HTMLElement {
 }
 
 // Plain DOM for the info window: links keep a real href (new tab works) but open inside the app.
-function popupContent(group: MapEventGroup, openEvent: (eventId: string) => void): HTMLElement {
+function popupContent(group: MapEventGroup, openEvent: (eventId: string) => void, hrefFor: (id: string) => string): HTMLElement {
   const content = document.createElement('div');
   content.className = 'map-popup';
   content.dir = 'rtl';
   for (const event of group.events) {
     const link = document.createElement('a');
-    link.href = `/events/${encodeURIComponent(event.id)}`;
+    link.href = hrefFor(event.id);
     link.textContent = event.title;
     link.addEventListener('click', (click) => {
       if (click.ctrlKey || click.metaKey || click.shiftKey || click.button !== 0) return;

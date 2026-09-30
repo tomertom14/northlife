@@ -1,0 +1,131 @@
+.open-status {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-weight: 600;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+}
+
+.open-status.is-open {
+  color: var(--success);
+}
+
+.status-dot {
+  background: currentColor;
+  border-radius: 50%;
+  flex: none;
+  height: 0.6rem;
+  width: 0.6rem;
+}
+
+.perk {
+  background: #fff7e0;
+  border: 1px solid #f0d488;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+  margin: 1rem 0 0;
+  padding: 0.5rem 0.85rem;
+}
+
+.hours {
+  border-collapse: collapse;
+  margin-top: 0.35rem;
+  width: 100%;
+}
+
+.hours th,
+.hours td {
+  font-size: 0.9375rem;
+  padding: 0.25rem 0;
+  text-align: start;
+  vertical-align: top;
+}
+
+.hours th {
+  font-weight: 500;
+  padding-inline-end: 1rem;
+  white-space: nowrap;
+}
+
+/* Times read left to right ("20:00–02:00"); the column sits on the left of the RTL table. */
+.hours td {
+  direction: ltr;
+  text-align: left;
+}
+
+.hours tr.today th,
+.hours tr.today td {
+  font-weight: 700;
+}
+
+.muted-text {
+  color: var(--muted);
+}
+
+.upcoming {
+  border-top: 1px solid var(--line);
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+}
+
+.upcoming h2 {
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  font-weight: 600;
+  margin: 0 0 1rem;
+}
+
+.upcoming ul {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.upcoming a {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  display: flex;
+  gap: 0.85rem;
+  padding: 0.6rem;
+}
+
+.upcoming a:hover {
+  border-color: var(--line-strong);
+}
+
+.upcoming a:hover .title {
+  text-decoration: underline;
+}
+
+.upcoming img {
+  aspect-ratio: 17 / 12;
+  border-radius: var(--radius-sm);
+  flex: none;
+  height: auto;
+  object-fit: cover;
+  width: 5.5rem;
+}
+
+.upcoming .text {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.upcoming .title {
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.upcoming .meta {
+  align-items: center;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 0.8125rem;
+  gap: 0.35rem;
+}

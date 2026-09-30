@@ -6,6 +6,7 @@
     <span class="clock" [style.color]="sky.theme().soft">{{ clockLabel() }}</span>
     <nav aria-label="ניווט ראשי">
       <a routerLink="/" routerLinkActive="current" [routerLinkActiveOptions]="{ exact: true }" ariaCurrentWhenActive="page">אירועים</a>
+      <a routerLink="/places" routerLinkActive="current" ariaCurrentWhenActive="page">מקומות</a>
       <a routerLink="/map" routerLinkActive="current" ariaCurrentWhenActive="page">מפה</a>
       <a routerLink="/manage/login">לעסקים</a>
     </nav>

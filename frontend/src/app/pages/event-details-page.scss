@@ -146,6 +146,15 @@ dd strong {
   margin-top: 1.1rem;
 }
 
+.place-link {
+  color: var(--ink);
+  display: inline-block;
+  font-weight: 600;
+  margin-top: 0.35rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
 .share-message {
   color: var(--success);
   font-size: 0.875rem;

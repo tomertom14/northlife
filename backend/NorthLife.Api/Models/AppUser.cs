@@ -41,6 +41,7 @@ public sealed class AppUser
     public bool Suspended => SuspendedAtUtc is not null;
 
     public ICollection<Event> Events { get; set; } = [];
+    public ICollection<Place> Places { get; set; } = [];
     public ICollection<EventImage> UploadedImages { get; set; } = [];
     public ICollection<ExternalLogin> ExternalLogins { get; set; } = [];
     public ICollection<UserToken> Tokens { get; set; } = [];

@@ -29,9 +29,13 @@ public static class GeohashFilter
     /// events whose geohash starts with any of the prefixes, written as byte-order ranges
     /// (prefix &lt;= geohash &lt; next prefix) so each prefix is one B-tree range scan.
     /// </summary>
-    public static Expression<Func<Event, bool>> StartsWithAny(IReadOnlyList<string> prefixes)
+    public static Expression<Func<Event, bool>> StartsWithAny(IReadOnlyList<string> prefixes) =>
+        StartsWithAny<Event>(prefixes);
+
+    /// <summary>The same filter for any entity with a byte-order <c>Geohash</c> column (events and places).</summary>
+    public static Expression<Func<T, bool>> StartsWithAny<T>(IReadOnlyList<string> prefixes)
     {
-        var parameter = Expression.Parameter(typeof(Event), "eventItem");
+        var parameter = Expression.Parameter(typeof(T), "item");
         var hash = Expression.Property(parameter, nameof(Event.Geohash));
         var compare = typeof(string).GetMethod(nameof(string.Compare), [typeof(string), typeof(string)])!;
         Expression? body = null;
@@ -47,6 +51,6 @@ public static class GeohashFilter
             body = body is null ? range : Expression.OrElse(body, range);
         }
 
-        return Expression.Lambda<Func<Event, bool>>(body ?? Expression.Constant(false), parameter);
+        return Expression.Lambda<Func<T, bool>>(body ?? Expression.Constant(false), parameter);
     }
 }

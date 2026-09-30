@@ -18,6 +18,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<AnalyticsCheckpoint> AnalyticsCheckpoints => Set<AnalyticsCheckpoint>();
     public DbSet<PositionPropensityRow> PositionPropensities => Set<PositionPropensityRow>();
     public DbSet<EventSimilarity> EventSimilarities => Set<EventSimilarity>();
+    public DbSet<Place> Places => Set<Place>();
+    public DbSet<PlaceOpeningHours> PlaceOpeningHours => Set<PlaceOpeningHours>();
     public DbSet<AutoModerationSettings> AutoModerationSettings => Set<AutoModerationSettings>();
     public DbSet<AutoModerationRun> AutoModerationRuns => Set<AutoModerationRun>();
     public DbSet<AutoModerationDecision> AutoModerationDecisions => Set<AutoModerationDecision>();
@@ -39,10 +41,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
-    /// <summary>Every save of an event keeps its geohash in step with its coordinates.</summary>
+    /// <summary>Every save of an event or a place keeps its geohash in step with its coordinates.</summary>
     private void UpdateGeohashes()
     {
         foreach (var entry in ChangeTracker.Entries<Event>())
+        {
+            if (entry.State is not (EntityState.Added or EntityState.Modified)) continue;
+            var hash = Ranking.Geohash.Encode((double)entry.Entity.Latitude, (double)entry.Entity.Longitude);
+            if (entry.Entity.Geohash != hash) entry.Entity.Geohash = hash;
+        }
+
+        foreach (var entry in ChangeTracker.Entries<Place>())
         {
             if (entry.State is not (EntityState.Added or EntityState.Modified)) continue;
             var hash = Ranking.Geohash.Encode((double)entry.Entity.Latitude, (double)entry.Entity.Longitude);

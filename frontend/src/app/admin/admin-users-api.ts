@@ -100,6 +100,9 @@ export const AUDIT_LABELS: Record<string, string> = {
   'event.highlighted': 'הוספה לבחירות העורכים',
   'event.unhighlighted': 'הסרה מבחירות העורכים',
   'event.deleted': 'מחיקת אירוע',
+  'place.approved': 'אישור מקום',
+  'place.rejected': 'דחיית מקום',
+  'place.deleted': 'מחיקת מקום',
   'automoderation.settings_changed': 'שינוי הגדרות האישור האוטומטי',
   'automoderation.run': 'הרצה ידנית של האישור האוטומטי',
 };
@@ -127,6 +130,11 @@ export function describeAudit(entry: AuditEntry): string {
     }
     case 'event.rejected':
       return [text('title'), text('rejectionReason') && `סיבה: ${text('rejectionReason')}`].filter(Boolean).join('. ');
+    case 'place.rejected':
+      return [text('name'), text('rejectionReason') && `סיבה: ${text('rejectionReason')}`].filter(Boolean).join('. ');
+    case 'place.approved':
+    case 'place.deleted':
+      return text('name');
     case 'automoderation.run': {
       const count = (key: string) => (typeof details[key] === 'number' ? (details[key] as number) : 0);
       const mode: AutoModerationMode = text('mode') === 'Approve' ? 'Approve' : 'NotesOnly';

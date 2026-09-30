@@ -4,7 +4,7 @@ NorthLife is a Hebrew, RTL platform for discovering events and activities in nor
 
 ## Current status
 
-Phases 11–15 and 17 of the final-project roadmap are complete; each phase has a verification record in [docs/phases](docs/phases/README.md).
+Phases 11–15, 17 and 18 of the final-project roadmap are complete; each phase has a verification record in [docs/phases](docs/phases/README.md).
 
 | Phase | What it adds |
 | --- | --- |
@@ -14,6 +14,7 @@ Phases 11–15 and 17 of the final-project roadmap are complete; each phase has 
 | 14 | "Hot now" ranking with position-bias correction, geohash "near me", map clustering |
 | 15 | Recommendations: Hebrew TF-IDF, item-item CF, adaptive blend, MMR, offline evaluation |
 | 17 | Automatic event approval: a daily rules check (owner record, ray-casting region test, Hebrew text checks, duplicates), exactly-once scheduling |
+| 18 | Places: business and venue pages with weekly hours, "open now" in SQL (overnight and 24-hour hours), next opening or closing, student perks, geohash "near me", map layer, moderation |
 
 Phase 16 (deployment) follows local QA; see [docs/local-qa.md](docs/local-qa.md).
 
@@ -29,6 +30,7 @@ Phase 16 (deployment) follows local QA; see [docs/local-qa.md](docs/local-qa.md)
   - [Smart ranking](docs/features/smart-ranking.md)
   - [Recommendations](docs/features/recommendations.md)
   - [Automatic event approval](docs/features/auto-moderation.md)
+  - [Places](docs/features/places.md)
 - [Recommendation offline evaluation](docs/evaluation/recommendations.md)
 - [Local QA guide](docs/local-qa.md)
 - [Deployment and operations](docs/deployment.md)

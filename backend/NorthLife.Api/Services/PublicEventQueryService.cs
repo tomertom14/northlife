@@ -338,10 +338,21 @@ public sealed class PublicEventQueryService(
                 eventItem.ImageId,
                 eventItem.IsHighlighted))
             .SingleOrDefaultAsync(cancellationToken);
+        if (row is null) return null;
 
-        return row is null
-            ? null
-            : new EventDetailsResponse(
+        // The linked place is shown only while it is public itself.
+        var place = await dbContext.Events
+            .AsNoTracking()
+            .Where(eventItem =>
+                eventItem.Id == id &&
+                eventItem.Place != null &&
+                eventItem.Place.DeletedAtUtc == null &&
+                eventItem.Place.Status == EventStatus.Published &&
+                eventItem.Place.Owner.SuspendedAtUtc == null)
+            .Select(eventItem => new EventPlaceLink(eventItem.Place!.Id, eventItem.Place.Name))
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return new EventDetailsResponse(
                 row.Id,
                 row.Title,
                 row.Description,
@@ -357,7 +368,8 @@ public sealed class PublicEventQueryService(
                 row.OrganizerName,
                 row.Tags,
                 ImageUrl(row.ImageId),
-                row.IsHighlighted);
+                row.IsHighlighted,
+                place);
     }
 
     public async Task<MapEventsResponse> GetMapAsync(

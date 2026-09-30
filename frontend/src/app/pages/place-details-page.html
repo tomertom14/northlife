@@ -1,0 +1,114 @@
+<div class="details-shell">
+  <button type="button" class="back" (click)="goBack()">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6" /></svg>
+    חזרה למקומות
+  </button>
+
+  @if (loading()) {
+    <div class="skeleton" aria-hidden="true">
+      <span class="sk-cover"></span>
+      <i></i><i></i><i></i>
+    </div>
+    <p class="visually-hidden" role="status">טוענים את פרטי המקום</p>
+  } @else if (unavailable()) {
+    <div class="state">
+      <h1>המקום לא זמין</h1>
+      <p>ייתכן שהמקום הוסר, ממתין לאישור, או שהקישור שגוי.</p>
+      <a class="btn btn-primary" routerLink="/places">לכל המקומות</a>
+    </div>
+  } @else if (failed()) {
+    <div class="state" role="alert">
+      <h1>פרטי המקום לא נטענו</h1>
+      <p>השרת לא הגיב. בדקו את החיבור ונסו שוב.</p>
+      <button type="button" class="btn btn-primary" (click)="reload()">טעינה מחדש</button>
+    </div>
+  } @else if (place(); as item) {
+    <article class="event">
+      <figure class="cover">
+        <img [appEventImage]="item.imageUrl" [category]="cover[item.category]" alt="" width="1600" height="900" fetchpriority="high" />
+      </figure>
+
+      <div class="layout">
+        <header class="head">
+          <p class="category">{{ labels[item.category] }} · {{ item.locality }}</p>
+          <h1>{{ item.name }}</h1>
+          <p class="open-status" [class.is-open]="item.open.isOpen">
+            <span class="status-dot" aria-hidden="true"></span>{{ status() }}
+          </p>
+          @if (item.studentPerk) {
+            <p class="perk"><strong>הטבה לסטודנטים:</strong> {{ item.studentPerk }}</p>
+          }
+        </header>
+
+        <aside class="facts" aria-label="פרטים שימושיים">
+          <dl>
+            <div>
+              <dt>איפה</dt>
+              <dd><strong>{{ item.address }}</strong>{{ item.locality }}</dd>
+            </div>
+            <div>
+              <dt>שעות פתיחה</dt>
+              <dd>
+                @if (item.hours.length === 0) {
+                  <span class="muted-text">לא פורסמו</span>
+                } @else {
+                  <table class="hours">
+                    <caption class="visually-hidden">שעות הפתיחה לפי ימים</caption>
+                    <tbody>
+                      @for (row of rows(); track row.day) {
+                        <tr [class.today]="row.day === today()" [attr.aria-current]="row.day === today() ? 'date' : null">
+                          <th scope="row">{{ row.name }}</th>
+                          <td>{{ row.text }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+              </dd>
+            </div>
+          </dl>
+          <div class="actions">
+            <a class="btn btn-primary" [href]="wazeUrl(item)" target="_blank" rel="noopener">ניווט עם Waze</a>
+            <a class="btn" [href]="googleMapsUrl(item)" target="_blank" rel="noopener">ניווט עם Google Maps</a>
+            @if (item.phone) {
+              <a class="btn btn-quiet" [href]="telUrl(item.phone)">חיוג: <span dir="ltr">{{ item.phone }}</span></a>
+            }
+            @if (item.website) {
+              <a class="btn btn-quiet" [href]="item.website" target="_blank" rel="noopener">אתר: <span dir="ltr">{{ websiteLabel(item.website) }}</span></a>
+            }
+            @if (item.instagram) {
+              <a class="btn btn-quiet" [href]="instagramUrl(item.instagram)" target="_blank" rel="noopener">אינסטגרם: <span dir="ltr">&#64;{{ item.instagram }}</span></a>
+            }
+          </div>
+        </aside>
+
+        <div class="body">
+          <p class="description">{{ item.description }}</p>
+          <p class="organizer">מנוהל על ידי <strong>{{ item.businessName }}</strong></p>
+
+          <section class="upcoming" aria-labelledby="upcoming-title">
+            <h2 id="upcoming-title">אירועים קרובים במקום</h2>
+            @if (item.upcomingEvents.length === 0) {
+              <p class="muted-text">אין כרגע אירועים מתוכננים כאן.</p>
+            } @else {
+              <ul>
+                @for (event of item.upcomingEvents; track event.id) {
+                  <li>
+                    <a [routerLink]="['/events', event.id]">
+                      <img [appEventImage]="event.imageUrl" [category]="event.category" alt="" width="136" height="96" loading="lazy" />
+                      <span class="text">
+                        <span class="title">{{ event.title }}</span>
+                        <span class="meta">{{ when(event.startAt) }}</span>
+                        <span class="meta"><span class="cat-dot" [style.--dot]="eventColors[event.category]"></span>{{ eventLabels[event.category] }}, {{ price(event.price) }}</span>
+                      </span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            }
+          </section>
+        </div>
+      </div>
+    </article>
+  }
+</div>

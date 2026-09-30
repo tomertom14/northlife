@@ -11,4 +11,5 @@ public sealed class EventImage
 
     public AppUser Uploader { get; set; } = null!;
     public ICollection<Event> Events { get; set; } = [];
+    public ICollection<Place> Places { get; set; } = [];
 }

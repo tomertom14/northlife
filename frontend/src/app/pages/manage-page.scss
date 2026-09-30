@@ -198,6 +198,28 @@ h3 {
   gap: 0.5rem;
 }
 
+// Places review: the expandable details of a submitted place.
+.details-toggle {
+  justify-self: start;
+  min-height: 2.25rem;
+  padding-inline: 0;
+}
+
+.place-details {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.place-details p {
+  margin: 0;
+}
+
+.place-details ul {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+}
+
 // Automatic approval: tag on events it published, note on pending events it looked at.
 .auto-tag {
   background: #e8f3ec;

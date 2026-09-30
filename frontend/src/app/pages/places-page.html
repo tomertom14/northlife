@@ -1,0 +1,121 @@
+<div class="places-shell">
+  <header class="intro">
+    <h1>מקומות בצפון</h1>
+    <p>מסעדות, בתי קפה, ברים, חוגים ושירותים מקומיים, עם שעות פתיחה, הטבות לסטודנטים ומה פתוח עכשיו.</p>
+  </header>
+
+  <section class="filter-bar" aria-label="סינון מקומות">
+    <div class="chips" role="group" aria-label="סוג מקום">
+      <button type="button" class="chip" [class.selected]="!query().category" [attr.aria-pressed]="!query().category" (click)="setCategory(undefined)">
+        הכול
+      </button>
+      @for (item of categories; track item) {
+        <button type="button" class="chip" [class.selected]="query().category === item" [attr.aria-pressed]="query().category === item" (click)="setCategory(item)">
+          {{ labels[item] }}
+        </button>
+      }
+    </div>
+
+    <div class="fields">
+      <form class="search" role="search" (submit)="onSearch($event)">
+        <label class="compact">
+          <span>חיפוש</span>
+          <input class="input" type="search" name="q" placeholder="שם או מילה" enterkeyhint="search" autocomplete="off" [value]="query().q ?? ''" />
+        </label>
+      </form>
+
+      <label class="compact">
+        <span>איפה</span>
+        <input
+          class="input"
+          type="search"
+          name="locality"
+          list="places-localities"
+          placeholder="כל הצפון"
+          enterkeyhint="search"
+          autocomplete="off"
+          [value]="query().locality ?? ''"
+          (change)="onLocality($event)" />
+      </label>
+      <datalist id="places-localities">
+        @for (place of localities; track place) {
+          <option [value]="place"></option>
+        }
+      </datalist>
+
+      <button type="button" class="toggle" [attr.aria-pressed]="query().openNow" (click)="setOpenNow(!query().openNow)">
+        <span class="toggle-dot" aria-hidden="true"></span>פתוח עכשיו
+      </button>
+
+      <div class="sorts" role="group" aria-label="סדר">
+        <button type="button" class="sort" [attr.aria-pressed]="query().sort === 'name'" (click)="setSort('name')">לפי שם</button>
+        <button type="button" class="sort" [attr.aria-pressed]="query().sort === 'near'" (click)="setSort('near')">קרוב אליי</button>
+      </div>
+
+      @if (hasFilters()) {
+        <button type="button" class="btn btn-quiet clear" (click)="clearFilters()">ניקוי סינון</button>
+      }
+    </div>
+  </section>
+
+  @if (geoMessage()) {
+    <p class="geo-message" role="status">{{ geoMessage() }}</p>
+  }
+
+  <section class="results" aria-labelledby="results-title" [attr.aria-busy]="loading()">
+    <div class="results-head">
+      <h2 id="results-title">{{ query().openNow ? 'פתוחים עכשיו' : 'כל המקומות' }}</h2>
+      @if (!loading() && !failed()) {
+        <span class="count">{{ countLabel() }}</span>
+      }
+    </div>
+
+    @if (loading()) {
+      <ul class="grid skeleton" aria-hidden="true">
+        @for (item of [1, 2, 3, 4, 5, 6]; track item) {
+          <li class="card"><span class="sk-image"></span><i></i><i></i></li>
+        }
+      </ul>
+    } @else if (failed()) {
+      <div class="state" role="alert">
+        <p class="state-title">המקומות לא נטענו</p>
+        <p>השרת לא הגיב. בדקו את החיבור ונסו שוב.</p>
+        <button type="button" class="btn btn-primary" (click)="reload()">טעינה מחדש</button>
+      </div>
+    } @else if (places().length === 0) {
+      <div class="state">
+        <p class="state-title">{{ query().openNow ? 'אין מקום שפתוח עכשיו לפי הסינון' : 'לא נמצאו מקומות' }}</p>
+        <p>נסו להרחיב את הסינון או לחפש מילה אחרת.</p>
+        @if (hasFilters()) {
+          <button type="button" class="btn btn-primary" (click)="clearFilters()">ניקוי סינון</button>
+        }
+      </div>
+    } @else {
+      <ul class="grid">
+        @for (place of places(); track place.id) {
+          <li>
+            <a class="card" [routerLink]="['/places', place.id]">
+              <img [appEventImage]="place.imageUrl" [category]="cover[place.category]" alt="" width="480" height="300" loading="lazy" />
+              <span class="card-body">
+                <span class="name">{{ place.name }}</span>
+                <span class="meta">{{ labels[place.category] }} · {{ place.locality }}@if (place.distanceKm !== null) { · {{ distance(place.distanceKm) }} }</span>
+                <span class="status" [class.is-open]="place.open.isOpen"><span class="status-dot" aria-hidden="true"></span>{{ statusText(place.open) }}</span>
+                @if (place.studentPerk) {
+                  <span class="perk">הטבה לסטודנטים</span>
+                }
+              </span>
+            </a>
+          </li>
+        }
+      </ul>
+
+      @if (totalPages() > 1) {
+        <nav class="pagination" aria-label="עמודי תוצאות">
+          <button type="button" class="btn" [disabled]="query().page <= 1" (click)="goToPage(query().page - 1)">הקודם</button>
+          <span>עמוד {{ query().page }} מתוך {{ totalPages() }}</span>
+          <button type="button" class="btn" [disabled]="query().page >= totalPages()" (click)="goToPage(query().page + 1)">הבא</button>
+        </nav>
+      }
+    }
+  </section>
+</div>

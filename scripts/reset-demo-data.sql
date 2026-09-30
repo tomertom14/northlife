@@ -6,6 +6,8 @@ BEGIN;
 TRUNCATE interactions, event_stats_hourly, event_stats_daily, event_popularity;
 UPDATE analytics_checkpoints SET processed_until_utc = now();
 DELETE FROM events WHERE owner_id IN (SELECT id FROM users WHERE email LIKE '%@demo.northlife.local');
+-- Places before images and owners (both are referenced); their opening hours go with them.
+DELETE FROM places WHERE owner_id IN (SELECT id FROM users WHERE email LIKE '%@demo.northlife.local');
 DELETE FROM event_images WHERE uploader_id IN (SELECT id FROM users WHERE email LIKE '%@demo.northlife.local');
 DELETE FROM users WHERE email LIKE '%@demo.northlife.local';
 COMMIT;

@@ -162,6 +162,11 @@ builder.Services.AddScoped<OwnerEventService>();
 builder.Services.AddScoped<AdminEventService>();
 builder.Services.AddSingleton<EventTimeWindowFactory>();
 builder.Services.AddScoped<PublicEventQueryService>();
+builder.Services.AddScoped<NorthLife.Api.Places.PlaceLifecycle>();
+builder.Services.AddScoped<NorthLife.Api.Places.OwnerPlaceService>();
+builder.Services.AddScoped<NorthLife.Api.Places.AdminPlaceService>();
+builder.Services.AddScoped<NorthLife.Api.Places.PlaceQueryService>();
+builder.Services.AddScoped<NorthLife.Api.Places.DemoPlacesSeeder>();
 builder.Services.AddScoped<DevelopmentDataSeeder>();
 
 builder.Services
@@ -337,6 +342,10 @@ if (args.Contains("--seed-demo", StringComparer.OrdinalIgnoreCase))
             "Demo data: {Owners} owners (owner1..owner{Owners}@demo.northlife.local, password {Password}), {Events} events, {Interactions} simulated interactions from {Visitors} visitors.",
             result.Owners, result.Owners, result.OwnerPassword, result.Events, result.Interactions, result.Visitors);
     }
+
+    // Also adds places to a demo database seeded before places existed.
+    var places = await scope.ServiceProvider.GetRequiredService<NorthLife.Api.Places.DemoPlacesSeeder>().SeedAsync(CancellationToken.None);
+    if (places > 0) app.Logger.LogInformation("Demo data: {Places} places added.", places);
 
     return;
 }

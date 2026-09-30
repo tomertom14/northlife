@@ -31,7 +31,8 @@ public sealed record EventDetailsResponse(
     string OrganizerName,
     IReadOnlyList<string> Tags,
     string ImageUrl,
-    bool IsHighlighted);
+    bool IsHighlighted,
+    EventPlaceLink? Place = null);
 
 public sealed record MapEventResponse(
     Guid Id,

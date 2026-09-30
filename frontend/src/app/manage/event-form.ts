@@ -17,6 +17,7 @@ import { EventImageUpload } from '../images/event-image-upload';
 import { ImageUploadResponse } from '../images/image-upload-api';
 import { LocationPicker, SelectedCoordinates } from '../maps/location-picker';
 import { OwnerEvent, OwnerEventInput } from '../owner/owner-events-api';
+import { OwnerPlace } from '../owner/owner-places-api';
 import {
   CATEGORY_LABELS,
   EVENT_CATEGORIES,
@@ -40,6 +41,7 @@ interface EventFormModel {
   longitude: number | null;
   price: number | null;
   imageId: string;
+  placeId: string;
 }
 
 // Hebrew wording for fields the API reports; its own messages are English.
@@ -83,6 +85,8 @@ export class EventForm {
   readonly saving = input(false);
   readonly serverErrors = input<Record<string, string>>({});
   readonly defaultOrganizer = input('');
+  /** The owner's own places; choosing one fills the venue fields and links the event to its page. */
+  readonly places = input<OwnerPlace[]>([]);
 
   readonly save = output<OwnerEventInput>();
   readonly cancel = output<void>();
@@ -142,6 +146,18 @@ export class EventForm {
     this.clearError('imageId');
   }
 
+  placeSelected(): void {
+    const place = this.places().find((candidate) => candidate.id === this.model.placeId);
+    if (!place) return;
+    this.model.venueName = place.name;
+    this.model.locality = place.locality;
+    this.model.address = place.address;
+    this.model.latitude = place.latitude;
+    this.model.longitude = place.longitude;
+    for (const field of ['venueName', 'locality', 'address', 'latitude', 'longitude']) this.clearError(field);
+    this.changeDetector.markForCheck();
+  }
+
   coordinatesSelected(coordinates: SelectedCoordinates): void {
     this.model.latitude = Number(coordinates.latitude.toFixed(6));
     this.model.longitude = Number(coordinates.longitude.toFixed(6));
@@ -183,6 +199,7 @@ export class EventForm {
       organizerName: model.organizerName.trim(),
       tags: splitTags(model.tagsText),
       revision: this.event()?.revision,
+      placeId: this.mode() === 'owner' ? model.placeId || null : undefined,
     });
   }
 
@@ -231,6 +248,7 @@ export class EventForm {
         longitude: event.longitude,
         price: event.price,
         imageId: event.imageId,
+        placeId: event.placeId ?? '',
       };
     }
     const start = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -250,6 +268,7 @@ export class EventForm {
       longitude: 35.5,
       price: 0,
       imageId: '',
+      placeId: '',
     };
   }
 }

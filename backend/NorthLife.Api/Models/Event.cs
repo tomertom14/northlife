@@ -29,6 +29,10 @@ public sealed class Event
     /// <summary>Geohash of the venue (precision 9, about 5 m); kept in sync on save for "near me" searches.</summary>
     public string Geohash { get; set; } = string.Empty;
 
+    /// <summary>The owner's place where the event happens, if any; its page lists the event.</summary>
+    public Guid? PlaceId { get; set; }
+
     public AppUser Owner { get; set; } = null!;
     public EventImage Image { get; set; } = null!;
+    public Place? Place { get; set; }
 }

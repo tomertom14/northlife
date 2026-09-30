@@ -90,5 +90,16 @@ public sealed class EventConfiguration : IEntityTypeConfiguration<Event>
             .HasForeignKey(eventItem => eventItem.ImageId)
             .OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("fk_events_event_images_image_id");
+
+        builder.Property(eventItem => eventItem.PlaceId).HasColumnName("place_id");
+        builder.HasIndex(eventItem => eventItem.PlaceId)
+            .HasDatabaseName("ix_events_place_id")
+            .HasFilter("place_id IS NOT NULL AND deleted_at_utc IS NULL");
+        // Places are soft-deleted, so the link never dangles; a hard delete is refused.
+        builder.HasOne(eventItem => eventItem.Place)
+            .WithMany()
+            .HasForeignKey(eventItem => eventItem.PlaceId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_events_places_place_id");
     }
 }
