@@ -86,6 +86,12 @@ main:focus {
   outline: none;
 }
 
+/* Keeps the footer below the fold while a page loads its data, so it does not jump down
+   when the content arrives (the main layout shift Lighthouse measured on event and place pages). */
+main {
+  min-height: 100dvh;
+}
+
 .site-footer {
   border-top: 1px solid var(--line);
   color: var(--muted);

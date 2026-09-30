@@ -95,7 +95,15 @@
         @for (place of places(); track place.id) {
           <li>
             <a class="card" [routerLink]="['/places', place.id]">
-              <img [appEventImage]="place.imageUrl" [category]="cover[place.category]" alt="" width="480" height="300" loading="lazy" />
+              <!-- The first row is visible at once: load it eagerly, the first image first (it is the largest paint). -->
+              <img
+                [appEventImage]="place.imageUrl"
+                [category]="cover[place.category]"
+                alt=""
+                width="480"
+                height="300"
+                [attr.loading]="$index < 3 ? 'eager' : 'lazy'"
+                [attr.fetchpriority]="$index === 0 ? 'high' : null" />
               <span class="card-body">
                 <span class="name">{{ place.name }}</span>
                 <span class="meta">{{ labels[place.category] }} · {{ place.locality }}@if (place.distanceKm !== null) { · {{ distance(place.distanceKm) }} }</span>

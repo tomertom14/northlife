@@ -243,6 +243,20 @@ builder.Services.AddAuthorizationBuilder()
         .RequireRole(nameof(UserRole.Admin))
         .RequireClaim(AuthTokenService.MfaClaim, "true"));
 
+// Compress the Angular bundle and other static text. JSON stays uncompressed on purpose: sign-in responses
+// carry tokens, and compressing secrets next to attacker-influenced content is what BREACH exploits.
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProvider>();
+    options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProvider>();
+    options.MimeTypes = ["text/html", "text/css", "text/javascript", "application/javascript", "image/svg+xml", "application/manifest+json"];
+});
+builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProviderOptions>(
+    options => options.Level = System.IO.Compression.CompressionLevel.Optimal);
+builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProviderOptions>(
+    options => options.Level = System.IO.Compression.CompressionLevel.Optimal);
+
 var authPermitsPerMinute = builder.Configuration.GetValue("RateLimiting:AuthPermitsPerMinute", 10);
 var emailPermitsPerWindow = builder.Configuration.GetValue("RateLimiting:EmailPermitsPer15Minutes", 5);
 var analyticsPermitsPerMinute = builder.Configuration.GetValue("RateLimiting:AnalyticsPermitsPerMinute", 120);
@@ -423,8 +437,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseResponseCompression();
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = StaticCaching.Apply });
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -453,7 +468,7 @@ app.MapFallback("/api/{**path}", () => Results.Problem(
     title: "Not found",
     statusCode: StatusCodes.Status404NotFound,
     extensions: new Dictionary<string, object?> { ["code"] = "not_found" }));
-app.MapFallbackToFile("index.html");
+app.MapFallbackToFile("index.html", new StaticFileOptions { OnPrepareResponse = StaticCaching.Apply });
 
 app.Run();
 
