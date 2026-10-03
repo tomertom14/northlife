@@ -12,7 +12,8 @@ public sealed record EventSummaryResponse(
     decimal Price,
     EventCategory Category,
     string ImageUrl,
-    bool IsHighlighted);
+    bool IsHighlighted,
+    double? DistanceKm = null);
 
 public sealed record EventDetailsResponse(
     Guid Id,
@@ -30,7 +31,8 @@ public sealed record EventDetailsResponse(
     string OrganizerName,
     IReadOnlyList<string> Tags,
     string ImageUrl,
-    bool IsHighlighted);
+    bool IsHighlighted,
+    EventPlaceLink? Place = null);
 
 public sealed record MapEventResponse(
     Guid Id,

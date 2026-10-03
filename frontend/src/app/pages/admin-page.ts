@@ -4,11 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Observable, forkJoin } from 'rxjs';
 import { AdminEvent, AdminEventsApi } from '../admin/admin-events-api';
+import { autoReviewNote } from '../admin/auto-moderation-api';
 import { AuthStore } from '../auth/auth-store';
 import { PrivateImage } from '../images/private-image';
+import { AdminNav } from '../manage/admin-nav';
 import { EventForm } from '../manage/event-form';
 import { StatTile, StatTiles } from '../manage/stat-tiles';
 import { StatusBadge } from '../manage/status-badge';
+import { OwnerAnalyticsApi, TrafficAnomaly } from '../owner/owner-analytics-api';
 import { OwnerEventInput, OwnerEventStatus } from '../owner/owner-events-api';
 import { Clock } from '../shared/clock';
 import { formatLongDate, formatTime } from '../shared/jerusalem-time';
@@ -17,12 +20,13 @@ import { ToastService } from '../shared/toast';
 
 @Component({
   selector: 'app-admin-page',
-  imports: [FormsModule, RouterLink, EventForm, StatTiles, StatusBadge, PrivateImage],
+  imports: [FormsModule, RouterLink, AdminNav, EventForm, StatTiles, StatusBadge, PrivateImage],
   templateUrl: './admin-page.html',
   styleUrl: './manage-page.scss',
 })
 export class AdminPage implements OnInit {
   private readonly api = inject(AdminEventsApi);
+  private readonly analytics = inject(OwnerAnalyticsApi);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   private readonly clock = inject(Clock);
@@ -30,6 +34,7 @@ export class AdminPage implements OnInit {
   readonly auth = inject(AuthStore);
 
   readonly events = signal<AdminEvent[]>([]);
+  readonly anomalies = signal<TrafficAnomaly[]>([]);
   readonly overview = signal<AdminEvent[]>([]);
   readonly loading = signal(true);
   readonly loadFailed = signal(false);
@@ -41,6 +46,7 @@ export class AdminPage implements OnInit {
   readonly rejectingId = signal<string | null>(null);
   readonly confirmDeleteId = signal<string | null>(null);
   readonly rejectError = signal('');
+  readonly note = autoReviewNote;
   status: '' | OwnerEventStatus = 'Pending';
   search = '';
   rejectionReason = '';
@@ -62,6 +68,7 @@ export class AdminPage implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    this.analytics.anomalies().subscribe({ next: (anomalies) => this.anomalies.set(anomalies), error: () => undefined });
   }
 
   load(): void {

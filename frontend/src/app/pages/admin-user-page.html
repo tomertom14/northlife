@@ -1,0 +1,127 @@
+<div class="people">
+  <a class="back" routerLink="/manage/admin/users">כל המשתמשים</a>
+
+  @if (loading() && !details()) {
+    <p class="muted" role="status">טוענים את פרטי המשתמש…</p>
+  } @else if (failed()) {
+    <p class="notice notice-error" role="alert">פרטי המשתמש לא נטענו. ייתכן שהקישור שגוי.</p>
+  } @else if (details(); as d) {
+    <header class="page-head">
+      <div>
+        <h1>{{ d.user.fullName }}</h1>
+        <p class="muted">{{ d.user.businessName }}</p>
+      </div>
+      <span class="tags">
+        <span class="tag">{{ roleLabels[d.user.role] }}</span>
+        @if (d.user.suspended) { <span class="tag danger">מושעה</span> }
+        @if (!d.user.emailConfirmed) { <span class="tag warn">אימייל לא מאומת</span> }
+      </span>
+    </header>
+    <app-admin-nav />
+
+    @if (d.user.suspended && d.suspendedAt) {
+      <p class="notice notice-error" role="status">
+        החשבון מושעה מאז {{ when(d.suspendedAt) }}. סיבה: {{ d.suspensionReason }}.
+        האירועים שלו לא מוצגים באתר.
+      </p>
+    }
+
+    <section class="card" aria-labelledby="facts-title">
+      <h2 id="facts-title">פרטי החשבון</h2>
+      <dl class="facts">
+        <div><dt>אימייל</dt><dd dir="ltr">{{ d.user.email }}</dd></div>
+        <div><dt>טלפון</dt><dd dir="ltr">{{ d.phone }}</dd></div>
+        <div><dt>נרשם</dt><dd>{{ date(d.user.createdAt) }}</dd></div>
+        <div><dt>אימות אימייל</dt><dd>{{ d.user.emailConfirmed ? 'מאומת' : 'ממתין לאימות' }}</dd></div>
+        <div><dt>אימות דו-שלבי</dt><dd>{{ d.user.totpEnabled ? 'פעיל' : 'לא פעיל' }}</dd></div>
+        <div><dt>חשבון Google</dt><dd>{{ d.googleLinked ? 'מקושר' : 'לא מקושר' }}</dd></div>
+        <div><dt>אירועים</dt><dd>{{ d.user.publishedEvents }} פורסמו, {{ d.user.pendingEvents }} ממתינים</dd></div>
+      </dl>
+    </section>
+
+    <section class="card" aria-labelledby="actions-title">
+      <h2 id="actions-title">פעולות</h2>
+      @if (isSelf()) {
+        <p class="muted">זה החשבון שלכם. מנהל אחר צריך לבצע השעיה או שינוי תפקיד.</p>
+      } @else {
+        <form class="actions" (ngSubmit)="saveRole()">
+          <div class="field">
+            <label for="user-role">תפקיד</label>
+            <select class="input" id="user-role" name="role" [(ngModel)]="role">
+              <option value="BusinessOwner">בעל עסק</option>
+              <option value="Admin">מנהל</option>
+            </select>
+          </div>
+          <button type="submit" class="btn" [disabled]="busy() || role === d.user.role">שמירת תפקיד</button>
+        </form>
+
+        @if (d.user.suspended) {
+          <div class="actions">
+            <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="unsuspend()">ביטול ההשעיה</button>
+          </div>
+        } @else if (suspending()) {
+          <form class="suspend" (ngSubmit)="suspend()">
+            <div class="field">
+              <label for="suspend-reason">סיבת ההשעיה</label>
+              <textarea
+                class="input"
+                id="suspend-reason"
+                name="reason"
+                rows="3"
+                maxlength="500"
+                [(ngModel)]="reason"
+                [attr.aria-invalid]="reasonError() ? true : null"
+                aria-describedby="suspend-hint suspend-error"></textarea>
+              <span class="field-hint" id="suspend-hint">המשתמש מתנתק מיד, והאירועים שלו יורדים מהאתר עד לביטול ההשעיה.</span>
+              @if (reasonError()) {
+                <span class="field-error" id="suspend-error">{{ reasonError() }}</span>
+              }
+            </div>
+            <div class="actions">
+              <button type="submit" class="btn btn-danger" [disabled]="busy()">השעיית החשבון</button>
+              <button type="button" class="btn btn-quiet" (click)="suspending.set(false)">ביטול</button>
+            </div>
+          </form>
+        } @else {
+          <div class="actions">
+            <button type="button" class="btn btn-danger" (click)="startSuspend()">השעיית החשבון…</button>
+          </div>
+        }
+      }
+    </section>
+
+    <section class="card" aria-labelledby="events-title">
+      <h2 id="events-title">האירועים של המשתמש</h2>
+      @if (d.events.length === 0) {
+        <p class="muted">עוד לא נשלחו אירועים.</p>
+      } @else {
+        <ul class="timeline">
+          @for (event of d.events; track event.id) {
+            <li class="event-line">
+              <span class="what">{{ event.title }}</span>
+              <span class="when">{{ date(event.startAt) }}</span>
+              <app-status-badge [status]="event.status" />
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="card" aria-labelledby="audit-title">
+      <h2 id="audit-title">יומן פעולות</h2>
+      @if (d.audit.length === 0) {
+        <p class="muted">אין פעולות רשומות על החשבון.</p>
+      } @else {
+        <ul class="timeline">
+          @for (entry of d.audit; track entry.id) {
+            <li>
+              <span class="when">{{ when(entry.createdAt) }}, {{ actor(entry) }}</span>
+              <span class="what">{{ auditLabels[entry.action] ?? entry.action }}</span>
+              @if (describe(entry); as line) { <span class="detail">{{ line }}</span> }
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+</div>

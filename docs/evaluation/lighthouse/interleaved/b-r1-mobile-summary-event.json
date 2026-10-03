@@ -1,0 +1,18 @@
+[
+  {
+    "page": "event",
+    "formFactor": "mobile",
+    "runs": 1,
+    "performance": 65,
+    "accessibility": 100,
+    "bestPractices": 100,
+    "seo": 100,
+    "fcpMs": 1901,
+    "lcpMs": 3232,
+    "tbtMs": 1539,
+    "cls": 0,
+    "speedIndexMs": 2242,
+    "mainTransferKb": 116,
+    "benchmarkIndex": 1200
+  }
+]

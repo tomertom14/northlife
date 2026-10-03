@@ -22,6 +22,23 @@ namespace NorthLife.Api.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("NorthLife.Api.Models.AnalyticsCheckpoint", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTimeOffset>("ProcessedUntilUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("processed_until_utc");
+
+                    b.HasKey("Name")
+                        .HasName("pk_analytics_checkpoints");
+
+                    b.ToTable("analytics_checkpoints", (string)null);
+                });
+
             modelBuilder.Entity("NorthLife.Api.Models.AppUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -43,6 +60,10 @@ namespace NorthLife.Api.Data.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)")
                         .HasColumnName("email");
+
+                    b.Property<DateTimeOffset?>("EmailConfirmedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("email_confirmed_at_utc");
 
                     b.Property<string>("FullName")
                         .IsRequired()
@@ -73,6 +94,39 @@ namespace NorthLife.Api.Data.Migrations
                         .HasColumnType("character varying(30)")
                         .HasColumnName("role");
 
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("security_stamp");
+
+                    b.Property<DateTimeOffset?>("SuspendedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("suspended_at_utc");
+
+                    b.Property<string>("SuspensionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("suspension_reason");
+
+                    b.Property<DateTimeOffset?>("TotpEnabledAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("totp_enabled_at_utc");
+
+                    b.Property<long?>("TotpLastUsedStep")
+                        .HasColumnType("bigint")
+                        .HasColumnName("totp_last_used_step");
+
+                    b.Property<string>("TotpPendingSecretProtected")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("totp_pending_secret_protected");
+
+                    b.Property<string>("TotpSecretProtected")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("totp_secret_protected");
+
                     b.HasKey("Id")
                         .HasName("pk_users");
 
@@ -80,9 +134,276 @@ namespace NorthLife.Api.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_users_normalized_email");
 
+                    b.HasIndex("CreatedAtUtc", "Id")
+                        .HasDatabaseName("ix_users_created_id");
+
                     b.ToTable("users", null, t =>
                         {
                             t.HasCheckConstraint("ck_users_role", "role IN ('BusinessOwner', 'Admin')");
+                        });
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.AuditEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("action");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("Details")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("details");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_id");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("target_type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_entries");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_audit_entries_actor_id");
+
+                    b.HasIndex("TargetId")
+                        .HasDatabaseName("ix_audit_entries_target_id");
+
+                    b.HasIndex("CreatedAtUtc", "Id")
+                        .HasDatabaseName("ix_audit_entries_created_id");
+
+                    b.ToTable("audit_entries", (string)null);
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.AutoModerationDecision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("DecidedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("decided_at_utc");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<int>("EventRevision")
+                        .HasColumnType("integer")
+                        .HasColumnName("event_revision");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("outcome");
+
+                    b.Property<string>("Reasons")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("reasons");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("run_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_auto_moderation_decisions");
+
+                    b.HasIndex("RunId")
+                        .HasDatabaseName("ix_auto_moderation_decisions_run");
+
+                    b.HasIndex("EventId", "DecidedAtUtc")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_auto_moderation_decisions_event_decided");
+
+                    b.ToTable("auto_moderation_decisions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_auto_moderation_decisions_outcome", "outcome IN ('Approved', 'WouldApprove', 'Held')");
+                        });
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.AutoModerationRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Approved")
+                        .HasColumnType("integer")
+                        .HasColumnName("approved");
+
+                    b.Property<int>("Checked")
+                        .HasColumnType("integer")
+                        .HasColumnName("checked");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset?>("FinishedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("finished_at_utc");
+
+                    b.Property<int>("Held")
+                        .HasColumnType("integer")
+                        .HasColumnName("held");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("mode");
+
+                    b.Property<DateTimeOffset>("StartedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("started_at_utc");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("trigger");
+
+                    b.Property<Guid?>("TriggeredById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("triggered_by_id");
+
+                    b.Property<int>("WouldApprove")
+                        .HasColumnType("integer")
+                        .HasColumnName("would_approve");
+
+                    b.HasKey("Id")
+                        .HasName("pk_auto_moderation_runs");
+
+                    b.HasIndex("StartedAtUtc")
+                        .IsDescending()
+                        .HasDatabaseName("ix_auto_moderation_runs_started");
+
+                    b.HasIndex("TriggeredById")
+                        .HasDatabaseName("ix_auto_moderation_runs_triggered_by_id");
+
+                    b.ToTable("auto_moderation_runs", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_auto_moderation_runs_mode", "mode IN ('Off', 'NotesOnly', 'Approve')");
+
+                            t.HasCheckConstraint("ck_auto_moderation_runs_trigger", "trigger IN ('Scheduled', 'Manual')");
+                        });
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.AutoModerationSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.PrimitiveCollection<string[]>("BannedWords")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("banned_words");
+
+                    b.Property<int>("DuplicateDistanceMeters")
+                        .HasColumnType("integer")
+                        .HasColumnName("duplicate_distance_meters");
+
+                    b.Property<double>("DuplicateSimilarity")
+                        .HasColumnType("double precision")
+                        .HasColumnName("duplicate_similarity");
+
+                    b.Property<DateOnly?>("LastScheduledRunDate")
+                        .HasColumnType("date")
+                        .HasColumnName("last_scheduled_run_date");
+
+                    b.Property<int>("MaxAutoApprovalsPerOwnerPerDay")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_auto_approvals_per_owner_per_day");
+
+                    b.Property<int>("MaxDaysAhead")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_days_ahead");
+
+                    b.Property<int>("MaxDurationDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_duration_days");
+
+                    b.Property<decimal>("MaxPrice")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("max_price");
+
+                    b.Property<int>("MinAccountAgeDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_account_age_days");
+
+                    b.Property<int>("MinApprovedEvents")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_approved_events");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("mode");
+
+                    b.Property<int>("RejectionLookbackDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("rejection_lookback_days");
+
+                    b.Property<TimeOnly>("RunAtLocal")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("run_at_local");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_auto_moderation_settings");
+
+                    b.ToTable("auto_moderation_settings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_auto_moderation_settings_mode", "mode IN ('Off', 'NotesOnly', 'Approve')");
+
+                            t.HasCheckConstraint("ck_auto_moderation_settings_single_row", "id = '0199a0f7-0017-7000-8000-a07011a70017'");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("0199a0f7-0017-7000-8000-a07011a70017"),
+                            BannedWords = new[] { "קזינו", "הימורים", "הלוואות" },
+                            DuplicateDistanceMeters = 1000,
+                            DuplicateSimilarity = 0.84999999999999998,
+                            MaxAutoApprovalsPerOwnerPerDay = 5,
+                            MaxDaysAhead = 180,
+                            MaxDurationDays = 14,
+                            MaxPrice = 1000m,
+                            MinAccountAgeDays = 7,
+                            MinApprovedEvents = 3,
+                            Mode = "NotesOnly",
+                            RejectionLookbackDays = 90,
+                            RunAtLocal = new TimeOnly(7, 0, 0),
+                            UpdatedAtUtc = new DateTimeOffset(new DateTime(2026, 9, 29, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         });
                 });
 
@@ -122,6 +443,13 @@ namespace NorthLife.Api.Data.Migrations
                         .HasColumnType("timestamptz")
                         .HasColumnName("end_at_utc");
 
+                    b.Property<string>("Geohash")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("geohash")
+                        .UseCollation("C");
+
                     b.Property<Guid>("ImageId")
                         .HasColumnType("uuid")
                         .HasColumnName("image_id");
@@ -155,6 +483,10 @@ namespace NorthLife.Api.Data.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid")
                         .HasColumnName("owner_id");
+
+                    b.Property<Guid?>("PlaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("place_id");
 
                     b.Property<decimal>("Price")
                         .HasPrecision(10, 2)
@@ -209,8 +541,16 @@ namespace NorthLife.Api.Data.Migrations
                         .HasDatabaseName("ix_events_end_at")
                         .HasFilter("deleted_at_utc IS NULL");
 
+                    b.HasIndex("Geohash")
+                        .HasDatabaseName("ix_events_geohash")
+                        .HasFilter("deleted_at_utc IS NULL");
+
                     b.HasIndex("ImageId")
                         .HasDatabaseName("ix_events_image_id");
+
+                    b.HasIndex("PlaceId")
+                        .HasDatabaseName("ix_events_place_id")
+                        .HasFilter("place_id IS NOT NULL AND deleted_at_utc IS NULL");
 
                     b.HasIndex("OwnerId", "UpdatedAtUtc")
                         .HasDatabaseName("ix_events_owner_updated")
@@ -296,6 +636,513 @@ namespace NorthLife.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("NorthLife.Api.Models.EventPopularity", b =>
+                {
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<double>("LogScore")
+                        .HasColumnType("double precision")
+                        .HasColumnName("log_score");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("EventId")
+                        .HasName("pk_event_popularity");
+
+                    b.HasIndex("LogScore")
+                        .IsDescending()
+                        .HasDatabaseName("ix_event_popularity_log_score");
+
+                    b.ToTable("event_popularity", (string)null);
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.EventSimilarity", b =>
+                {
+                    b.Property<Guid>("SourceEventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_event_id");
+
+                    b.Property<Guid>("TargetEventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_event_id");
+
+                    b.Property<double>("Blended")
+                        .HasColumnType("double precision")
+                        .HasColumnName("blended");
+
+                    b.Property<int>("CoVisitors")
+                        .HasColumnType("integer")
+                        .HasColumnName("co_visitors");
+
+                    b.Property<double>("Collaborative")
+                        .HasColumnType("double precision")
+                        .HasColumnName("collaborative");
+
+                    b.Property<DateTimeOffset>("ComputedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("computed_at_utc");
+
+                    b.Property<double>("Content")
+                        .HasColumnType("double precision")
+                        .HasColumnName("content");
+
+                    b.Property<short>("Rank")
+                        .HasColumnType("smallint")
+                        .HasColumnName("rank");
+
+                    b.HasKey("SourceEventId", "TargetEventId")
+                        .HasName("pk_event_similarities");
+
+                    b.HasIndex("TargetEventId")
+                        .HasDatabaseName("ix_event_similarities_target");
+
+                    b.HasIndex("SourceEventId", "Rank")
+                        .HasDatabaseName("ix_event_similarities_source_rank");
+
+                    b.ToTable("event_similarities", (string)null);
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.EventStatsDaily", b =>
+                {
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date")
+                        .HasColumnName("day");
+
+                    b.Property<int>("DetailViews")
+                        .HasColumnType("integer")
+                        .HasColumnName("detail_views");
+
+                    b.Property<int>("Impressions")
+                        .HasColumnType("integer")
+                        .HasColumnName("impressions");
+
+                    b.Property<int>("Navigations")
+                        .HasColumnType("integer")
+                        .HasColumnName("navigations");
+
+                    b.Property<int>("Shares")
+                        .HasColumnType("integer")
+                        .HasColumnName("shares");
+
+                    b.Property<byte[]>("VisitorSketch")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("visitor_sketch");
+
+                    b.Property<int>("Visitors")
+                        .HasColumnType("integer")
+                        .HasColumnName("visitors");
+
+                    b.HasKey("EventId", "Day")
+                        .HasName("pk_event_stats_daily");
+
+                    b.ToTable("event_stats_daily", (string)null);
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.EventStatsHourly", b =>
+                {
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTimeOffset>("HourUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("hour_utc");
+
+                    b.Property<int>("DetailViews")
+                        .HasColumnType("integer")
+                        .HasColumnName("detail_views");
+
+                    b.Property<int>("Impressions")
+                        .HasColumnType("integer")
+                        .HasColumnName("impressions");
+
+                    b.Property<int>("Navigations")
+                        .HasColumnType("integer")
+                        .HasColumnName("navigations");
+
+                    b.Property<int>("Shares")
+                        .HasColumnType("integer")
+                        .HasColumnName("shares");
+
+                    b.HasKey("EventId", "HourUtc")
+                        .HasName("pk_event_stats_hourly");
+
+                    b.HasIndex("HourUtc")
+                        .HasDatabaseName("ix_event_stats_hourly_hour");
+
+                    b.ToTable("event_stats_hourly", (string)null);
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.ExternalLogin", b =>
+                {
+                    b.Property<string>("Provider")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("subject");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Provider", "Subject")
+                        .HasName("pk_external_logins");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_external_logins_user_id");
+
+                    b.ToTable("external_logins", (string)null);
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.Place", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("address");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at_utc");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(3000)
+                        .HasColumnType("character varying(3000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Geohash")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("geohash")
+                        .UseCollation("C");
+
+                    b.Property<Guid>("ImageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("image_id");
+
+                    b.Property<string>("Instagram")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("instagram");
+
+                    b.Property<decimal>("Latitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)")
+                        .HasColumnName("latitude");
+
+                    b.Property<string>("Locality")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("locality");
+
+                    b.Property<decimal>("Longitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)")
+                        .HasColumnName("longitude");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("rejection_reason");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("revision");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("StudentPerk")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("student_perk");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<string>("Website")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("website");
+
+                    b.HasKey("Id")
+                        .HasName("pk_places");
+
+                    b.HasIndex("Geohash")
+                        .HasDatabaseName("ix_places_geohash")
+                        .HasFilter("deleted_at_utc IS NULL");
+
+                    b.HasIndex("ImageId")
+                        .HasDatabaseName("ix_places_image_id");
+
+                    b.HasIndex("OwnerId", "UpdatedAtUtc")
+                        .HasDatabaseName("ix_places_owner_updated")
+                        .HasFilter("deleted_at_utc IS NULL");
+
+                    b.HasIndex("Status", "Category", "Name")
+                        .HasDatabaseName("ix_places_status_category_name")
+                        .HasFilter("deleted_at_utc IS NULL");
+
+                    b.HasIndex("Status", "Locality", "Name")
+                        .HasDatabaseName("ix_places_status_locality_name")
+                        .HasFilter("deleted_at_utc IS NULL");
+
+                    b.ToTable("places", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_places_category", "category IN ('Food', 'Cafe', 'Nightlife', 'Classes', 'Sports', 'Culture', 'Outdoors', 'Services')");
+
+                            t.HasCheckConstraint("ck_places_latitude", "latitude BETWEEN -90 AND 90");
+
+                            t.HasCheckConstraint("ck_places_longitude", "longitude BETWEEN -180 AND 180");
+
+                            t.HasCheckConstraint("ck_places_revision", "revision >= 1");
+
+                            t.HasCheckConstraint("ck_places_status", "status IN ('Pending', 'Published', 'Rejected')");
+                        });
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.PlaceOpeningHours", b =>
+                {
+                    b.Property<Guid>("PlaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("place_id");
+
+                    b.Property<short>("DayOfWeek")
+                        .HasColumnType("smallint")
+                        .HasColumnName("day_of_week");
+
+                    b.Property<short>("OpensMinute")
+                        .HasColumnType("smallint")
+                        .HasColumnName("opens_minute");
+
+                    b.Property<short>("ClosesMinute")
+                        .HasColumnType("smallint")
+                        .HasColumnName("closes_minute");
+
+                    b.HasKey("PlaceId", "DayOfWeek", "OpensMinute")
+                        .HasName("pk_place_opening_hours");
+
+                    b.ToTable("place_opening_hours", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_place_opening_hours_closes", "closes_minute BETWEEN 0 AND 1439");
+
+                            t.HasCheckConstraint("ck_place_opening_hours_day", "day_of_week BETWEEN 0 AND 6");
+
+                            t.HasCheckConstraint("ck_place_opening_hours_opens", "opens_minute BETWEEN 0 AND 1439");
+                        });
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.PositionPropensityRow", b =>
+                {
+                    b.Property<short>("Surface")
+                        .HasColumnType("smallint")
+                        .HasColumnName("surface");
+
+                    b.Property<short>("Position")
+                        .HasColumnType("smallint")
+                        .HasColumnName("position");
+
+                    b.Property<int>("Clicks")
+                        .HasColumnType("integer")
+                        .HasColumnName("clicks");
+
+                    b.Property<DateTimeOffset>("EstimatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("estimated_at_utc");
+
+                    b.Property<int>("Impressions")
+                        .HasColumnType("integer")
+                        .HasColumnName("impressions");
+
+                    b.Property<double>("NaiveRatio")
+                        .HasColumnType("double precision")
+                        .HasColumnName("naive_ratio");
+
+                    b.Property<double>("Propensity")
+                        .HasColumnType("double precision")
+                        .HasColumnName("propensity");
+
+                    b.Property<double>("RawPropensity")
+                        .HasColumnType("double precision")
+                        .HasColumnName("raw_propensity");
+
+                    b.HasKey("Surface", "Position")
+                        .HasName("pk_position_propensities");
+
+                    b.ToTable("position_propensities", (string)null);
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.RecoveryCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code_hash");
+
+                    b.Property<DateTimeOffset?>("UsedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("used_at_utc");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_recovery_codes");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_recovery_codes_user_id");
+
+                    b.ToTable("recovery_codes", (string)null);
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.UserToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("purpose");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTimeOffset?>("UsedAtUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("used_at_utc");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_tokens");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_user_tokens_token_hash");
+
+                    b.HasIndex("UserId", "Purpose")
+                        .HasDatabaseName("ix_user_tokens_user_purpose");
+
+                    b.ToTable("user_tokens", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_user_tokens_purpose", "purpose IN ('VerifyEmail', 'ResetPassword')");
+                        });
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.AuditEntry", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.AppUser", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_audit_entries_users_actor_id");
+
+                    b.Navigation("Actor");
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.AutoModerationDecision", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_auto_moderation_decisions_events_event_id");
+
+                    b.HasOne("NorthLife.Api.Models.AutoModerationRun", null)
+                        .WithMany()
+                        .HasForeignKey("RunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_auto_moderation_decisions_runs_run_id");
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.AutoModerationRun", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("TriggeredById")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_auto_moderation_runs_users_triggered_by_id");
+                });
+
             modelBuilder.Entity("NorthLife.Api.Models.Event", b =>
                 {
                     b.HasOne("NorthLife.Api.Models.EventImage", "Image")
@@ -312,9 +1159,17 @@ namespace NorthLife.Api.Data.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_events_users_owner_id");
 
+                    b.HasOne("NorthLife.Api.Models.Place", "Place")
+                        .WithMany()
+                        .HasForeignKey("PlaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_events_places_place_id");
+
                     b.Navigation("Image");
 
                     b.Navigation("Owner");
+
+                    b.Navigation("Place");
                 });
 
             modelBuilder.Entity("NorthLife.Api.Models.EventImage", b =>
@@ -329,9 +1184,131 @@ namespace NorthLife.Api.Data.Migrations
                     b.Navigation("Uploader");
                 });
 
+            modelBuilder.Entity("NorthLife.Api.Models.EventPopularity", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.Event", null)
+                        .WithOne()
+                        .HasForeignKey("NorthLife.Api.Models.EventPopularity", "EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_popularity_events_event_id");
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.EventSimilarity", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.Event", null)
+                        .WithMany()
+                        .HasForeignKey("SourceEventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_similarities_events_source_event_id");
+
+                    b.HasOne("NorthLife.Api.Models.Event", null)
+                        .WithMany()
+                        .HasForeignKey("TargetEventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_similarities_events_target_event_id");
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.EventStatsDaily", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_stats_daily_events_event_id");
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.EventStatsHourly", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_stats_hourly_events_event_id");
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.ExternalLogin", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.AppUser", "User")
+                        .WithMany("ExternalLogins")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_external_logins_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.Place", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.EventImage", "Image")
+                        .WithMany("Places")
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_places_event_images_image_id");
+
+                    b.HasOne("NorthLife.Api.Models.AppUser", "Owner")
+                        .WithMany("Places")
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_places_users_owner_id");
+
+                    b.Navigation("Image");
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.PlaceOpeningHours", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.Place", null)
+                        .WithMany("OpeningHours")
+                        .HasForeignKey("PlaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_place_opening_hours_places_place_id");
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.RecoveryCode", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.AppUser", "User")
+                        .WithMany("RecoveryCodes")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_recovery_codes_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.UserToken", b =>
+                {
+                    b.HasOne("NorthLife.Api.Models.AppUser", "User")
+                        .WithMany("Tokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_tokens_users_user_id");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("NorthLife.Api.Models.AppUser", b =>
                 {
                     b.Navigation("Events");
+
+                    b.Navigation("ExternalLogins");
+
+                    b.Navigation("Places");
+
+                    b.Navigation("RecoveryCodes");
+
+                    b.Navigation("Tokens");
 
                     b.Navigation("UploadedImages");
                 });
@@ -339,6 +1316,13 @@ namespace NorthLife.Api.Data.Migrations
             modelBuilder.Entity("NorthLife.Api.Models.EventImage", b =>
                 {
                     b.Navigation("Events");
+
+                    b.Navigation("Places");
+                });
+
+            modelBuilder.Entity("NorthLife.Api.Models.Place", b =>
+                {
+                    b.Navigation("OpeningHours");
                 });
 #pragma warning restore 612, 618
         }

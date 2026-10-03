@@ -1,0 +1,18 @@
+[
+  {
+    "page": "places",
+    "formFactor": "mobile",
+    "runs": 1,
+    "performance": 71,
+    "accessibility": 100,
+    "bestPractices": 100,
+    "seo": 100,
+    "fcpMs": 2735,
+    "lcpMs": 3627,
+    "tbtMs": 577,
+    "cls": 0,
+    "speedIndexMs": 2735,
+    "mainTransferKb": 116,
+    "benchmarkIndex": 298
+  }
+]

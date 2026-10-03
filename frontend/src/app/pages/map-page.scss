@@ -33,9 +33,41 @@ h1 {
 }
 
 .map-actions {
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
+}
+
+.layers {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  display: inline-flex;
+  padding: 0.2rem;
+}
+
+.layer {
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  min-height: 2.25rem;
+  padding: 0 0.9rem;
+  white-space: nowrap;
+}
+
+.layer[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+/* On the places layer the first column says open or closed instead of a time. */
+.time.open {
+  color: var(--success);
 }
 
 .map-host {
@@ -140,6 +172,14 @@ h2 {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
+  }
+
+  .layers {
+    grid-column: 1 / -1;
+  }
+
+  .layer {
+    flex: 1;
   }
 
   .map-host {

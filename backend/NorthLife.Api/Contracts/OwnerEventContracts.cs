@@ -17,7 +17,8 @@ public sealed record OwnerEventUpsertRequest(
     Guid ImageId,
     string OrganizerName,
     IReadOnlyList<string> Tags,
-    int? Revision);
+    int? Revision,
+    Guid? PlaceId = null);
 
 public sealed record OwnerEventResponse(
     Guid Id,
@@ -39,4 +40,5 @@ public sealed record OwnerEventResponse(
     EventStatus Status,
     string? RejectionReason,
     DateTimeOffset UpdatedAt,
-    int Revision);
+    int Revision,
+    Guid? PlaceId = null);

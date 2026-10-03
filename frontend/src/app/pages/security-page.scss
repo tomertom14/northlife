@@ -1,0 +1,141 @@
+:host {
+  display: block;
+}
+
+.security {
+  display: grid;
+  gap: 1.25rem;
+  margin: 0 auto;
+  max-width: 40rem;
+}
+
+.page-head {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 8vw, 4.25rem);
+  font-weight: 700;
+  line-height: 0.9;
+  margin: 0;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0.9rem;
+  padding: clamp(1.1rem, 4vw, 1.75rem);
+}
+
+.card-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.state {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.15rem 0.7rem;
+}
+
+.state.on {
+  background: #e8f3ec;
+  border-color: #b9d8c4;
+  color: var(--success);
+}
+
+.lead,
+.meta {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.steps {
+  display: grid;
+  gap: 1.25rem;
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+
+.steps li {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.qr {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  height: auto;
+  image-rendering: pixelated;
+  padding: 0.5rem;
+  width: min(216px, 70vw);
+}
+
+.manual {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.manual code,
+.codes {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+.code {
+  direction: ltr;
+  font-size: 1.4rem;
+  letter-spacing: 0.3em;
+  max-width: 14rem;
+  text-align: center;
+}
+
+.codes {
+  display: grid;
+  gap: 0.4rem 1.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  padding-inline-start: 1.5rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.facts {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.facts div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+dt {
+  color: var(--muted);
+  min-width: 5rem;
+}
+
+dd {
+  margin: 0;
+}

@@ -3,7 +3,14 @@
   <ul class="rail">
     @for (event of events(); track event.id) {
       <li>
-        <a class="poster" [routerLink]="['/events', event.id]">
+        <a
+          class="poster"
+          [routerLink]="['/events', event.id]"
+          [state]="{ source: 'Picks', position: $index + 1, context: 'picks' }"
+          [appTrackImpression]="event.id"
+          trackSource="Picks"
+          [trackPosition]="$index + 1"
+          trackContext="picks">
           <img [appEventImage]="event.imageUrl" [category]="event.category" alt="" width="600" height="800" loading="lazy" />
           <span class="poster-text">
             <span class="poster-title">{{ event.title }}</span>

@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 
 namespace NorthLife.Tests;
@@ -35,6 +37,9 @@ public sealed class HealthEndpointsTests : IClassFixture<NorthLifeApiFactory>
 
 public sealed class NorthLifeApiFactory : WebApplicationFactory<Program>
 {
+    /// <summary>Accounts whose sessions the fake validator treats as revoked (suspended or stamp rotated).</summary>
+    public HashSet<Guid> RevokedUsers { get; } = [];
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -44,5 +49,18 @@ public sealed class NorthLifeApiFactory : WebApplicationFactory<Program>
         builder.UseSetting(
             "Authentication:JwtKey",
             "northlife-tests-only-signing-key-32-bytes");
+        // The rollup worker needs PostgreSQL; database-backed analytics run in the Docker end-to-end suite.
+        builder.UseSetting("Analytics:WorkerEnabled", "false");
+        builder.UseSetting("AutoModeration:WorkerEnabled", "false");
+        builder.ConfigureTestServices(services =>
+            services.AddSingleton<NorthLife.Api.Authentication.ISessionValidator>(new FakeSessionValidator(RevokedUsers)));
+    }
+
+    private sealed class FakeSessionValidator(HashSet<Guid> revoked) : NorthLife.Api.Authentication.ISessionValidator
+    {
+        public Task<bool> IsCurrentAsync(Guid userId, string securityStamp, CancellationToken cancellationToken) =>
+            Task.FromResult(!revoked.Contains(userId));
+
+        public void Invalidate(Guid userId) { }
     }
 }

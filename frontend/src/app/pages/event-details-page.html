@@ -45,7 +45,12 @@
             </div>
             <div>
               <dt>איפה</dt>
-              <dd><strong>{{ item.venueName }}</strong>{{ item.address }}, {{ item.locality }}</dd>
+              <dd>
+                <strong>{{ item.venueName }}</strong>{{ item.address }}, {{ item.locality }}
+                @if (item.place) {
+                  <a class="place-link" [routerLink]="['/places', item.place.id]">לדף המקום: {{ item.place.name }}</a>
+                }
+              </dd>
             </div>
             <div>
               <dt>מחיר</dt>
@@ -53,8 +58,8 @@
             </div>
           </dl>
           <div class="actions">
-            <a class="btn btn-primary" [href]="wazeUrl(item)" target="_blank" rel="noopener">ניווט עם Waze</a>
-            <a class="btn" [href]="googleMapsUrl(item)" target="_blank" rel="noopener">ניווט עם Google Maps</a>
+            <a class="btn btn-primary" [href]="wazeUrl(item)" target="_blank" rel="noopener" (click)="trackNavigation(item)">ניווט עם Waze</a>
+            <a class="btn" [href]="googleMapsUrl(item)" target="_blank" rel="noopener" (click)="trackNavigation(item)">ניווט עם Google Maps</a>
             <button type="button" class="btn btn-quiet" (click)="share(item)">שיתוף האירוע</button>
           </div>
           @if (shareMessage()) {
@@ -74,6 +79,9 @@
           <p class="organizer">מארגן: <strong>{{ item.organizerName }}</strong></p>
         </div>
       </div>
+      @if (similar().length > 0) {
+        <app-similar-events [events]="similar()" />
+      }
     </article>
   }
 </div>

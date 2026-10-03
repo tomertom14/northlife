@@ -10,7 +10,7 @@ namespace NorthLife.Api.Controllers;
 
 [ApiController]
 [Route("api/admin/events")]
-[Authorize(Roles = nameof(UserRole.Admin))]
+[Authorize(Policy = NorthLife.Api.Authentication.AuthPolicies.AdminWithMfa)]
 public sealed class AdminEventsController(AdminEventService service) : ControllerBase
 {
     [HttpGet]
@@ -27,24 +27,24 @@ public sealed class AdminEventsController(AdminEventService service) : Controlle
 
     [HttpPut("{id:guid}")]
     public Task<ActionResult<AdminEventResponse>> Update(Guid id, OwnerEventUpsertRequest request, CancellationToken cancellationToken) =>
-        Execute(() => service.UpdateAsync(id, request, cancellationToken));
+        Execute(() => service.UpdateAsync(UserId(), id, request, cancellationToken));
 
     [HttpPost("{id:guid}/approve")]
     public Task<ActionResult<AdminEventResponse>> Approve(Guid id, RevisionRequest request, CancellationToken cancellationToken) =>
-        Execute(() => service.ApproveAsync(id, request.Revision, cancellationToken));
+        Execute(() => service.ApproveAsync(UserId(), id, request.Revision, cancellationToken));
 
     [HttpPost("{id:guid}/reject")]
     public Task<ActionResult<AdminEventResponse>> Reject(Guid id, RejectEventRequest request, CancellationToken cancellationToken) =>
-        Execute(() => service.RejectAsync(id, request.Revision, request.Reason, cancellationToken));
+        Execute(() => service.RejectAsync(UserId(), id, request.Revision, request.Reason, cancellationToken));
 
     [HttpPost("{id:guid}/highlight")]
     public Task<ActionResult<AdminEventResponse>> Highlight(Guid id, HighlightEventRequest request, CancellationToken cancellationToken) =>
-        Execute(() => service.HighlightAsync(id, request.Revision, request.IsHighlighted, cancellationToken));
+        Execute(() => service.HighlightAsync(UserId(), id, request.Revision, request.IsHighlighted, cancellationToken));
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, [FromQuery] int revision, CancellationToken cancellationToken)
     {
-        try { await service.DeleteAsync(id, revision, cancellationToken); return NoContent(); }
+        try { await service.DeleteAsync(UserId(), id, revision, cancellationToken); return NoContent(); }
         catch (AdminEventNotFoundException) { return NotFound(); }
         catch (EventRevisionConflictException) { return ConflictResult(); }
         catch (EventLifecycleException exception) { return Invalid(exception.Message); }
@@ -84,3 +84,4 @@ public sealed class AdminEventsController(AdminEventService service) : Controlle
 
     private Guid UserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)!);
 }
+

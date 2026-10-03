@@ -10,8 +10,21 @@ export type EventCategory =
   | 'Nightlife'
   | 'Other';
 
+export type FeedSort = 'time' | 'hot' | 'near';
+
+export const FEED_SORTS: FeedSort[] = ['time', 'hot', 'near'];
+
+export const SORT_LABELS: Record<FeedSort, string> = {
+  time: 'לפי שעה',
+  hot: 'הכי חם עכשיו',
+  near: 'קרוב אליי',
+};
+
 export interface PublicEventFilters {
   period: EventPeriod;
+  sort?: FeedSort;
+  latitude?: number;
+  longitude?: number;
   category?: EventCategory;
   locality?: string;
   maxPrice?: number;
@@ -32,6 +45,8 @@ export interface EventSummary {
   category: EventCategory;
   imageUrl: string;
   isHighlighted: boolean;
+  /** Kilometres from the visitor, when the list was sorted by distance or ranked with a location. */
+  distanceKm?: number | null;
 }
 
 export interface EventDetails extends EventSummary {
@@ -41,6 +56,8 @@ export interface EventDetails extends EventSummary {
   longitude: number;
   organizerName: string;
   tags: string[];
+  /** The place the event happens at, when that place is public. */
+  place?: { id: string; name: string } | null;
 }
 
 export interface PagedResponse<T> {
@@ -77,6 +94,7 @@ export interface MapBounds {
 export interface PublicConfiguration {
   googleMapsApiKey: string;
   googleMapsMapId: string;
+  googleClientId?: string;
 }
 
 export const CATEGORY_LABELS: Record<EventCategory, string> = {
@@ -134,6 +152,13 @@ export function eventImage(category: EventCategory): string {
   if (category === 'Music' || category === 'Nightlife') return '/images/events/music.svg';
   if (category === 'Outdoors' || category === 'Sports') return '/images/events/outdoors.svg';
   return '/images/events/workshop.svg';
+}
+
+const kilometres = new Intl.NumberFormat('he-IL', { maximumFractionDigits: 1 });
+
+export function formatDistance(km: number): string {
+  if (km < 1) return `${Math.max(50, Math.round((km * 1000) / 50) * 50)} מ׳ ממך`;
+  return `${kilometres.format(km)} ק״מ ממך`;
 }
 
 const wholeShekels = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 });

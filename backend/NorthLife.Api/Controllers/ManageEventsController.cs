@@ -104,6 +104,16 @@ public sealed class ManageEventsController(OwnerEventService service) : Controll
         {
             return ConflictProblem();
         }
+        catch (EmailNotConfirmedException)
+        {
+            var problem = new ProblemDetails
+            {
+                Status = StatusCodes.Status403Forbidden,
+                Title = "יש לאמת את כתובת האימייל לפני שליחת אירועים.",
+            };
+            problem.Extensions["code"] = "email_not_verified";
+            return StatusCode(StatusCodes.Status403Forbidden, problem);
+        }
     }
 
     private ObjectResult ValidationProblem(string field, string message)

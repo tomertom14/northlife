@@ -75,12 +75,13 @@ public sealed class EventImageService(
     public async Task<int> CleanupOrphansAsync(CancellationToken cancellationToken)
     {
         var cutoff = timeProvider.GetUtcNow().AddHours(-24);
-        // Soft-deleted events still hold the foreign key, so they count as references here.
+        // Soft-deleted events and places still hold the foreign key, so they count as references here.
         var candidates = await dbContext.EventImages
             .IgnoreQueryFilters()
             .Where(image =>
                 image.CreatedAtUtc <= cutoff &&
-                !image.Events.Any())
+                !image.Events.Any() &&
+                !image.Places.Any())
             .ToListAsync(cancellationToken);
 
         dbContext.EventImages.RemoveRange(candidates);

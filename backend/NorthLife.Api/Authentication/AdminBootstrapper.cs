@@ -49,6 +49,8 @@ public sealed class AdminBootstrapper(
         admin.Phone = phone;
         admin.BusinessName = businessName;
         admin.PasswordHash = passwordHasher.HashPassword(admin, password);
+        // The operator chose this address; the admin still enrolls TOTP at first sign-in.
+        admin.EmailConfirmedAtUtc ??= timeProvider.GetUtcNow();
 
         if (existing is null)
         {

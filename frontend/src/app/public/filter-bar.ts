@@ -4,7 +4,10 @@ import {
   CATEGORY_LABELS,
   EVENT_CATEGORIES,
   EventCategory,
+  FEED_SORTS,
+  FeedSort,
   NORTHERN_LOCALITIES,
+  SORT_LABELS,
 } from './public-event.models';
 
 @Component({
@@ -17,16 +20,20 @@ export class FilterBar {
   readonly locality = input<string>();
   readonly maxPrice = input<number>();
   readonly hasActiveFilters = input(false);
+  readonly sort = input<FeedSort>('time');
 
   readonly categoryChange = output<EventCategory | undefined>();
   readonly localityChange = output<string | undefined>();
   readonly maxPriceChange = output<number | undefined>();
   readonly clear = output<void>();
+  readonly sortChange = output<FeedSort>();
 
   readonly categories = EVENT_CATEGORIES;
   readonly labels = CATEGORY_LABELS;
   readonly colors = CATEGORY_COLORS;
   readonly localities = NORTHERN_LOCALITIES;
+  readonly sorts = FEED_SORTS;
+  readonly sortLabels = SORT_LABELS;
   readonly prices = [
     { value: 0, label: 'חינם' },
     { value: 50, label: 'עד 50 ₪' },

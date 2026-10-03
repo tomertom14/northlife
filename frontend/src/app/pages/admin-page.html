@@ -6,9 +6,34 @@
     </div>
     <div class="head-actions">
       <button type="button" class="btn btn-primary" (click)="startCreate()">פרסום אירוע</button>
+      <a class="btn btn-quiet" routerLink="/manage/security">אבטחת החשבון</a>
       <button type="button" class="btn btn-quiet" (click)="logout()">התנתקות</button>
     </div>
   </header>
+  <app-admin-nav />
+
+  @if (anomalies().length > 0) {
+    <section class="anomalies" aria-labelledby="anomalies-title">
+      <h2 id="anomalies-title">תנועה חריגה בשעה האחרונה</h2>
+      <ul>
+        @for (anomaly of anomalies(); track anomaly.eventId) {
+          <li>
+            <span class="anomaly-kind" [class.suspicious]="anomaly.kind === 'suspicious'">
+              @if (anomaly.kind === 'suspicious') {
+                <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 1.8l6.6 11.7H1.4z" /><path class="mark" d="M8 6v3.6M8 11.4v.2" /></svg>
+                חשד לתנועה אוטומטית
+              } @else {
+                <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="mark" d="M2 11.5l4-4 3 3 5-5M10 5.5h4v4" /></svg>
+                עלייה חדה
+              }
+            </span>
+            <a [routerLink]="['/events', anomaly.eventId]">{{ anomaly.title }}</a>
+            <span class="muted">{{ anomaly.businessName }}: {{ anomaly.observed }} צפיות בשעה, לעומת כ־{{ anomaly.baseline }} בדרך כלל</span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
 
   <app-stat-tiles [tiles]="tiles()" label="מצב האירועים במערכת" />
 
@@ -74,6 +99,9 @@
                 @if (event.isHighlighted) {
                   <span class="highlight-tag">בחירת העורכים</span>
                 }
+                @if (event.status === 'Published' && event.autoReview?.outcome === 'Approved') {
+                  <span class="auto-tag">אושר אוטומטית</span>
+                }
               </div>
               <h3>{{ event.title }}</h3>
               <p class="meta">{{ event.ownerBusinessName }}, {{ event.locality }}</p>
@@ -85,6 +113,18 @@
               </p>
               @if (event.rejectionReason) {
                 <p class="reason"><strong>סיבת הדחייה:</strong> {{ event.rejectionReason }}</p>
+              }
+              @if (note(event); as autoNote) {
+                <div class="auto-note" [class.held]="autoNote.tone === 'held'">
+                  <p class="auto-note-title">{{ autoNote.title }}</p>
+                  @if (autoNote.lines.length > 0) {
+                    <ul>
+                      @for (line of autoNote.lines; track $index) {
+                        <li>{{ line }}</li>
+                      }
+                    </ul>
+                  }
+                </div>
               }
             </div>
             <div class="item-actions">

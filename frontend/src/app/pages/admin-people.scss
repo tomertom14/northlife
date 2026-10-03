@@ -1,0 +1,244 @@
+// Shared by the admin users list, user detail and audit log.
+:host {
+  display: block;
+}
+
+.people {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.page-head {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  justify-content: space-between;
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 8vw, 4.5rem);
+  font-weight: 700;
+  line-height: 0.9;
+  margin: 0;
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.muted {
+  color: var(--muted);
+  margin: 0;
+}
+
+.filters {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.filters .field {
+  flex: 0 1 11rem;
+}
+
+.filters .grow {
+  flex: 1 1 16rem;
+}
+
+.rows {
+  display: grid;
+  gap: 0.6rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0.35rem 1.25rem;
+  grid-template-columns: minmax(0, 1.6fr) auto minmax(0, 1fr) auto;
+  padding: 0.9rem 1rem;
+}
+
+.row:hover {
+  border-color: var(--line-strong);
+}
+
+.who {
+  display: grid;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.sub,
+.counts,
+.since {
+  color: var(--muted);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tag {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.1rem 0.55rem;
+}
+
+.tag.danger {
+  background: #fbeced;
+  border-color: #e0b3b8;
+  color: var(--danger);
+}
+
+.tag.warn {
+  background: #fdf3dc;
+  border-color: #efd9a2;
+  color: #6b4c00;
+}
+
+.more {
+  justify-self: center;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0.9rem;
+  padding: clamp(1rem, 4vw, 1.5rem);
+}
+
+.facts {
+  display: grid;
+  gap: 0.5rem 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.facts dd {
+  font-weight: 500;
+  margin: 0.1rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: end;
+}
+
+.timeline {
+  display: grid;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.timeline li {
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem 0;
+}
+
+.timeline .when {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.timeline .what {
+  font-weight: 600;
+}
+
+.timeline .detail {
+  color: var(--muted);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 44rem) {
+  .row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .counts,
+  .since {
+    grid-column: 1 / -1;
+  }
+}
+
+.back {
+  color: var(--muted);
+  font-weight: 600;
+  justify-self: start;
+}
+
+.back::before {
+  content: '\2192\00a0';
+}
+
+.back:hover {
+  color: var(--ink);
+}
+
+.suspend {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 36rem;
+}
+
+.timeline .event-line {
+  align-items: center;
+  gap: 0.35rem 1rem;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.timeline.card {
+  gap: 0;
+  padding: 0.25rem clamp(1rem, 4vw, 1.5rem);
+}
+
+.timeline.card li:last-child {
+  border-bottom: 0;
+}
+
+.target {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-inline-start: 0.5rem;
+  text-decoration: underline;
+}
+
+@media (max-width: 44rem) {
+  .timeline .event-line {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}

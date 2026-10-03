@@ -1,5 +1,6 @@
 import { Component, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { TrackImpression } from '../analytics/track-impression';
 import { EventImage } from './event-image';
 import { EventSummary } from './public-event.models';
 import { Clock } from '../shared/clock';
@@ -7,7 +8,7 @@ import { formatTime, relativeDay } from '../shared/jerusalem-time';
 
 @Component({
   selector: 'app-picks-rail',
-  imports: [RouterLink, EventImage],
+  imports: [RouterLink, EventImage, TrackImpression],
   templateUrl: './picks-rail.html',
   styleUrl: './picks-rail.scss',
 })

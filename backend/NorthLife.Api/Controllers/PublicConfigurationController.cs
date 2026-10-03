@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace NorthLife.Api.Controllers;
 
+/// <summary>Browser-safe settings: public API keys and client IDs only, never secrets.</summary>
 [ApiController]
 [Route("api/config/public")]
 public sealed class PublicConfigurationController(IConfiguration configuration) : ControllerBase
@@ -11,5 +12,6 @@ public sealed class PublicConfigurationController(IConfiguration configuration) 
     {
         googleMapsApiKey = configuration["GoogleMaps:ApiKey"] ?? string.Empty,
         googleMapsMapId = configuration["GoogleMaps:MapId"] ?? string.Empty,
+        googleClientId = configuration["Google:ClientId"] ?? string.Empty,
     });
 }

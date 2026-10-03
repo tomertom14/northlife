@@ -1,0 +1,65 @@
+<div class="people">
+  <header class="page-head">
+    <h1>משתמשים</h1>
+  </header>
+  <app-admin-nav />
+
+  <form class="filters" (ngSubmit)="load()">
+    <div class="field grow">
+      <label for="users-search">חיפוש</label>
+      <input class="input" id="users-search" name="search" type="search" maxlength="100" placeholder="שם, אימייל או עסק" [(ngModel)]="query.search" />
+    </div>
+    <div class="field">
+      <label for="users-role">תפקיד</label>
+      <select class="input" id="users-role" name="role" [(ngModel)]="query.role" (ngModelChange)="load()">
+        <option value="">הכול</option>
+        <option value="BusinessOwner">בעלי עסקים</option>
+        <option value="Admin">מנהלים</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="users-status">מצב</label>
+      <select class="input" id="users-status" name="status" [(ngModel)]="query.status" (ngModelChange)="load()">
+        <option value="">הכול</option>
+        <option value="active">פעילים</option>
+        <option value="suspended">מושעים</option>
+        <option value="unverified">אימייל לא מאומת</option>
+      </select>
+    </div>
+    <button type="submit" class="btn">חיפוש</button>
+  </form>
+
+  @if (loading()) {
+    <p class="muted" role="status">טוענים משתמשים…</p>
+  } @else if (failed()) {
+    <p class="notice notice-error" role="alert">הרשימה לא נטענה. נסו שוב.</p>
+  } @else if (users().length === 0) {
+    <p class="muted">אין משתמשים שמתאימים לחיפוש.</p>
+  } @else {
+    <ul class="rows">
+      @for (user of users(); track user.id) {
+        <li>
+          <a class="row" [routerLink]="['/manage/admin/users', user.id]">
+            <span class="who">
+              <span class="name">{{ user.fullName }}</span>
+              <span class="sub">{{ user.businessName }}, {{ user.email }}</span>
+            </span>
+            <span class="tags">
+              <span class="tag">{{ roleLabels[user.role] }}</span>
+              @if (user.suspended) { <span class="tag danger">מושעה</span> }
+              @if (!user.emailConfirmed) { <span class="tag warn">לא מאומת</span> }
+              @if (user.totpEnabled) { <span class="tag">2FA</span> }
+            </span>
+            <span class="counts">{{ user.publishedEvents }} פורסמו, {{ user.pendingEvents }} ממתינים</span>
+            <span class="since">מאז {{ date(user.createdAt) }}</span>
+          </a>
+        </li>
+      }
+    </ul>
+    @if (nextCursor()) {
+      <button type="button" class="btn more" [disabled]="loadingMore()" (click)="loadMore()">
+        {{ loadingMore() ? 'טוענים…' : 'הצגת עוד משתמשים' }}
+      </button>
+    }
+  }
+</div>

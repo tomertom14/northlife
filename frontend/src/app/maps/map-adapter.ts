@@ -7,13 +7,20 @@ export interface MapEventGroup {
   latitude: number;
   longitude: number;
   events: MapEvent[];
+  /** Set for clusters of separate places: clicking zooms to this box instead of listing them. */
+  bounds?: MapBounds;
 }
 
 export interface MapRenderOptions {
-  boundsChanged: (bounds: MapBounds) => void;
+  /** After every pan or zoom, with the new zoom level so clusters can be rebuilt. */
+  boundsChanged: (bounds: MapBounds, zoom: number) => void;
   openEvent: (eventId: string) => void;
   /** Fit the viewport to the markers; otherwise the visitor's current viewport is kept. */
   fitToMarkers: boolean;
+  /** Link of one marker item; events by default, places on the places layer. */
+  hrefFor?: (id: string) => string;
+  /** Accessible title of a cluster marker, "12 אירועים" by default. */
+  countLabel?: (count: number) => string;
 }
 
 export interface LocationPickerHandle {
@@ -68,13 +75,27 @@ export class GoogleMapsAdapter implements MapAdapter {
     for (const group of groups) {
       const position = { lat: group.latitude, lng: group.longitude };
       fit.extend(position);
+      const spread = group.bounds && (group.bounds.north > group.bounds.south || group.bounds.east > group.bounds.west);
       const marker = new AdvancedMarkerElement({
         map,
         position,
-        title: group.events.length === 1 ? group.events[0].title : `${group.events.length} אירועים`,
+        title: group.events.length === 1
+          ? group.events[0].title
+          : options.countLabel?.(group.events.length) ?? `${group.events.length} אירועים`,
+        content: group.events.length > 1 ? clusterBadge(group.events.length) : undefined,
+        // Clickable markers also get keyboard focus and arrow-key navigation from Google Maps.
+        gmpClickable: true,
       });
-      marker.addListener('click', () => {
-        info.setContent(popupContent(group, options.openEvent));
+      marker.addEventListener('gmp-click', () => {
+        if (spread && group.bounds) {
+          // A cluster of separate places: zoom in until it splits.
+          map.fitBounds(
+            new LatLngBounds({ lat: group.bounds.south, lng: group.bounds.west }, { lat: group.bounds.north, lng: group.bounds.east }),
+            64,
+          );
+          return;
+        }
+        info.setContent(popupContent(group, options.openEvent, options.hrefFor ?? ((id) => `/events/${encodeURIComponent(id)}`)));
         info.open({ map, anchor: marker });
       });
       state.markers.push(marker);
@@ -86,7 +107,10 @@ export class GoogleMapsAdapter implements MapAdapter {
       if (!bounds) return;
       const northEast = bounds.getNorthEast();
       const southWest = bounds.getSouthWest();
-      options.boundsChanged({ north: northEast.lat(), east: northEast.lng(), south: southWest.lat(), west: southWest.lng() });
+      options.boundsChanged(
+        { north: northEast.lat(), east: northEast.lng(), south: southWest.lat(), west: southWest.lng() },
+        map.getZoom() ?? 9,
+      );
     });
   }
 
@@ -128,14 +152,36 @@ export class GoogleMapsAdapter implements MapAdapter {
   }
 }
 
+/** Round count badge for a cluster; Google Maps renders it outside Angular, so it is styled inline. */
+function clusterBadge(count: number): HTMLElement {
+  const size = Math.round(34 + Math.min(22, Math.log2(count) * 6));
+  const badge = document.createElement('div');
+  badge.textContent = String(count);
+  badge.setAttribute('aria-hidden', 'true');
+  Object.assign(badge.style, {
+    alignItems: 'center',
+    background: '#1d2320',
+    border: '2px solid #ffffff',
+    borderRadius: '50%',
+    boxShadow: '0 2px 8px rgba(29, 35, 32, 0.35)',
+    color: '#ffffff',
+    display: 'flex',
+    font: '700 14px "IBM Plex Sans Hebrew", sans-serif',
+    height: `${size}px`,
+    justifyContent: 'center',
+    width: `${size}px`,
+  });
+  return badge;
+}
+
 // Plain DOM for the info window: links keep a real href (new tab works) but open inside the app.
-function popupContent(group: MapEventGroup, openEvent: (eventId: string) => void): HTMLElement {
+function popupContent(group: MapEventGroup, openEvent: (eventId: string) => void, hrefFor: (id: string) => string): HTMLElement {
   const content = document.createElement('div');
   content.className = 'map-popup';
   content.dir = 'rtl';
   for (const event of group.events) {
     const link = document.createElement('a');
-    link.href = `/events/${encodeURIComponent(event.id)}`;
+    link.href = hrefFor(event.id);
     link.textContent = event.title;
     link.addEventListener('click', (click) => {
       if (click.ctrlKey || click.metaKey || click.shiftKey || click.button !== 0) return;

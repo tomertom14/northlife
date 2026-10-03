@@ -5,9 +5,13 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.DataProtection;
+using NorthLife.Api.Analytics;
 using NorthLife.Api.Authentication;
 using NorthLife.Api.Data;
+using NorthLife.Api.Email;
 using NorthLife.Api.Health;
+using NorthLife.Api.Identity;
 using NorthLife.Api.Images;
 using NorthLife.Api.Models;
 using NorthLife.Api.Services;
@@ -15,6 +19,19 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using System.Diagnostics;
+using Prometheus;
+
+// Offline evaluation of the recommender on simulated traffic; needs no database or configuration.
+if (args.Contains("--evaluate-recommendations", StringComparer.OrdinalIgnoreCase))
+{
+    var position = Array.FindIndex(args, argument => string.Equals(argument, "--evaluate-recommendations", StringComparison.OrdinalIgnoreCase));
+    var output = position + 1 < args.Length && !args[position + 1].StartsWith("--", StringComparison.Ordinal) ? args[position + 1] : "recommendation-evaluation.md";
+    var report = NorthLife.Api.Recommendations.OfflineEvaluation.Run();
+    var markdown = report.ToMarkdown();
+    File.WriteAllText(output, markdown);
+    Console.WriteLine(markdown);
+    return;
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -76,6 +93,66 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IPasswordHasher<AppUser>, PasswordHasher<AppUser>>();
 builder.Services.AddScoped<AuthTokenService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<AccountService>();
+builder.Services.AddScoped<UserTokenService>();
+builder.Services.AddSingleton<SecondFactorThrottle>();
+builder.Services.AddScoped<TotpService>();
+builder.Services.AddSingleton<IdentityTickets>();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<ISessionValidator, SessionValidator>();
+builder.Services.AddScoped<AuditLog>();
+builder.Services.AddScoped<AdminUserService>();
+
+builder.Services.Configure<AnalyticsOptions>(builder.Configuration.GetSection(AnalyticsOptions.SectionName));
+builder.Services.AddSingleton<AnalyticsMetrics>();
+builder.Services.AddScoped<AnalyticsIngestService>();
+builder.Services.AddScoped<AnalyticsRollupService>();
+builder.Services.AddScoped<OwnerAnalyticsService>();
+builder.Services.AddScoped<DemoSeeder>();
+builder.Services.Configure<NorthLife.Api.Ranking.RankingOptions>(builder.Configuration.GetSection(NorthLife.Api.Ranking.RankingOptions.SectionName));
+builder.Services.AddScoped<NorthLife.Api.Ranking.PositionBiasService>();
+builder.Services.Configure<NorthLife.Api.Recommendations.RecommendationOptions>(builder.Configuration.GetSection(NorthLife.Api.Recommendations.RecommendationOptions.SectionName));
+builder.Services.AddSingleton<NorthLife.Api.Recommendations.RecommendationModelCache>();
+builder.Services.AddScoped<NorthLife.Api.Recommendations.RecommendationModelService>();
+builder.Services.AddScoped<NorthLife.Api.Recommendations.RecommendationService>();
+if (builder.Configuration.GetValue($"{AnalyticsOptions.SectionName}:WorkerEnabled", true))
+{
+    builder.Services.AddHostedService<AnalyticsWorker>();
+}
+builder.Services.Configure<NorthLife.Api.Moderation.AutoModerationOptions>(builder.Configuration.GetSection(NorthLife.Api.Moderation.AutoModerationOptions.SectionName));
+builder.Services.AddScoped<NorthLife.Api.Moderation.AutoModerationService>();
+builder.Services.AddScoped<NorthLife.Api.Moderation.AutoModerationAdminService>();
+if (builder.Configuration.GetValue($"{NorthLife.Api.Moderation.AutoModerationOptions.SectionName}:WorkerEnabled", true))
+{
+    builder.Services.AddHostedService<NorthLife.Api.Moderation.AutoModerationWorker>();
+}
+builder.Services.Configure<MetricsAccessOptions>(builder.Configuration.GetSection(MetricsAccessOptions.SectionName));
+
+// Data Protection encrypts TOTP secrets and sign-in tickets. Keys must survive restarts and deploys.
+var dataProtection = builder.Services.AddDataProtection().SetApplicationName("NorthLife");
+var keysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrWhiteSpace(keysPath))
+{
+    dataProtection.PersistKeysToFileSystem(Directory.CreateDirectory(keysPath));
+}
+
+builder.Services.Configure<GoogleOptions>(builder.Configuration.GetSection(GoogleOptions.SectionName));
+builder.Services.AddSingleton<IGoogleTokenValidator, GoogleTokenValidator>();
+
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
+builder.Services.AddScoped<AccountEmails>();
+switch (builder.Configuration[$"{EmailOptions.SectionName}:Provider"]?.Trim().ToLowerInvariant())
+{
+    case "smtp":
+        builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+        break;
+    case "brevo":
+        builder.Services.AddHttpClient<IEmailSender, BrevoEmailSender>();
+        break;
+    default:
+        builder.Services.AddScoped<IEmailSender, LogEmailSender>();
+        break;
+}
 builder.Services.AddSingleton<IImageStorage, LocalImageStorage>();
 builder.Services.AddSingleton<EventImageProcessor>();
 builder.Services.AddScoped<EventImageService>();
@@ -85,6 +162,11 @@ builder.Services.AddScoped<OwnerEventService>();
 builder.Services.AddScoped<AdminEventService>();
 builder.Services.AddSingleton<EventTimeWindowFactory>();
 builder.Services.AddScoped<PublicEventQueryService>();
+builder.Services.AddScoped<NorthLife.Api.Places.PlaceLifecycle>();
+builder.Services.AddScoped<NorthLife.Api.Places.OwnerPlaceService>();
+builder.Services.AddScoped<NorthLife.Api.Places.AdminPlaceService>();
+builder.Services.AddScoped<NorthLife.Api.Places.PlaceQueryService>();
+builder.Services.AddScoped<NorthLife.Api.Places.DemoPlacesSeeder>();
 builder.Services.AddScoped<DevelopmentDataSeeder>();
 
 builder.Services
@@ -108,6 +190,20 @@ builder.Services
         };
         options.Events = new JwtBearerEvents
         {
+            // Signature and expiry are valid; now reject tokens of suspended accounts or rotated stamps.
+            OnTokenValidated = async context =>
+            {
+                var principal = context.Principal;
+                var subject = principal?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+                var stamp = principal?.FindFirst(AuthTokenService.StampClaim)?.Value;
+                var validator = context.HttpContext.RequestServices.GetRequiredService<ISessionValidator>();
+                if (!Guid.TryParse(subject, out var userId) ||
+                    string.IsNullOrEmpty(stamp) ||
+                    !await validator.IsCurrentAsync(userId, stamp, context.HttpContext.RequestAborted))
+                {
+                    context.Fail("session_revoked");
+                }
+            },
             OnChallenge = async context =>
             {
                 context.HandleResponse();
@@ -124,20 +220,46 @@ builder.Services
             },
             OnForbidden = async context =>
             {
+                // An administrator whose session skipped TOTP gets a specific code the client can act on.
+                var needsMfa =
+                    context.HttpContext.User.IsInRole(nameof(UserRole.Admin)) &&
+                    context.HttpContext.User.FindFirst(AuthTokenService.MfaClaim)?.Value != "true";
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 context.Response.ContentType = "application/problem+json";
                 await context.Response.WriteAsJsonAsync(new
                 {
                     type = "https://httpstatuses.com/403",
-                    title = "אין הרשאה לפעולה הזו.",
+                    title = needsMfa ? "נדרש אימות דו-שלבי לחשבון מנהל." : "אין הרשאה לפעולה הזו.",
                     status = StatusCodes.Status403Forbidden,
-                    code = "forbidden",
+                    code = needsMfa ? "mfa_required" : "forbidden",
                     traceId = context.HttpContext.TraceIdentifier,
                 });
             },
         };
     });
-builder.Services.AddAuthorization();
+// Administrators must have passed the TOTP step in this session, not only hold the role.
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(AuthPolicies.AdminWithMfa, policy => policy
+        .RequireRole(nameof(UserRole.Admin))
+        .RequireClaim(AuthTokenService.MfaClaim, "true"));
+
+// Compress the Angular bundle and other static text. JSON stays uncompressed on purpose: sign-in responses
+// carry tokens, and compressing secrets next to attacker-influenced content is what BREACH exploits.
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProvider>();
+    options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProvider>();
+    options.MimeTypes = ["text/html", "text/css", "text/javascript", "application/javascript", "image/svg+xml", "application/manifest+json"];
+});
+builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProviderOptions>(
+    options => options.Level = System.IO.Compression.CompressionLevel.Optimal);
+builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProviderOptions>(
+    options => options.Level = System.IO.Compression.CompressionLevel.Optimal);
+
+var authPermitsPerMinute = builder.Configuration.GetValue("RateLimiting:AuthPermitsPerMinute", 10);
+var emailPermitsPerWindow = builder.Configuration.GetValue("RateLimiting:EmailPermitsPer15Minutes", 5);
+var analyticsPermitsPerMinute = builder.Configuration.GetValue("RateLimiting:AnalyticsPermitsPerMinute", 120);
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -146,7 +268,29 @@ builder.Services.AddRateLimiter(options =>
             httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 10,
+                PermitLimit = authPermitsPerMinute,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            }));
+    // Anything that sends an email: resend verification and forgot password.
+    options.AddPolicy("email", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = emailPermitsPerWindow,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            }));
+    // Browsers send a batch every few seconds at most; this leaves room for several tabs behind one address.
+    options.AddPolicy("analytics", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = analyticsPermitsPerMinute,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
@@ -197,6 +341,41 @@ if (args.Contains("--seed-data", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+if (args.Contains("--seed-demo", StringComparer.OrdinalIgnoreCase))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+    var result = await scope.ServiceProvider.GetRequiredService<DemoSeeder>().SeedAsync(CancellationToken.None);
+    if (result is null)
+    {
+        app.Logger.LogInformation("Demo data already present; nothing to do.");
+    }
+    else
+    {
+        app.Logger.LogInformation(
+            "Demo data: {Owners} owners (owner1..owner{Owners}@demo.northlife.local, password {Password}), {Events} events, {Interactions} simulated interactions from {Visitors} visitors.",
+            result.Owners, result.Owners, result.OwnerPassword, result.Events, result.Interactions, result.Visitors);
+    }
+
+    // Also adds places to a demo database seeded before places existed.
+    var places = await scope.ServiceProvider.GetRequiredService<NorthLife.Api.Places.DemoPlacesSeeder>().SeedAsync(CancellationToken.None);
+    if (places > 0) app.Logger.LogInformation("Demo data: {Places} places added.", places);
+
+    return;
+}
+
+if (args.Contains("--seed-load", StringComparer.OrdinalIgnoreCase))
+{
+    // "--seed-load 10000": extra events for performance tests.
+    var position = Array.FindIndex(args, argument => string.Equals(argument, "--seed-load", StringComparison.OrdinalIgnoreCase));
+    var count = position + 1 < args.Length && int.TryParse(args[position + 1], out var parsed) ? parsed : 10_000;
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+    var added = await scope.ServiceProvider.GetRequiredService<DemoSeeder>().SeedLoadAsync(count, CancellationToken.None);
+    app.Logger.LogInformation("Added {EventCount} load-test events.", added);
+    return;
+}
+
 if (args.Contains("--bootstrap-admin", StringComparer.OrdinalIgnoreCase))
 {
     await using var scope = app.Services.CreateAsyncScope();
@@ -239,6 +418,18 @@ app.Use(async (context, next) =>
 });
 app.UseExceptionHandler();
 
+// Google Identity Services asks for this referrer policy when a site is tested on plain
+// http://localhost (local QA). Deployed hosts keep the browser default.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Host.Host is "localhost" or "127.0.0.1")
+    {
+        context.Response.Headers["Referrer-Policy"] = "no-referrer-when-downgrade";
+    }
+
+    await next();
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -246,13 +437,24 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseResponseCompression();
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = StaticCaching.Apply });
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseHttpMetrics();
+app.UseWhen(
+    context => context.Request.Path.StartsWithSegments("/metrics"),
+    branch => branch.Use(async (context, next) =>
+    {
+        // Operational metrics are not public: a bearer token, or a private network when allowed.
+        if (MetricsAccess.IsAllowed(context, context.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<MetricsAccessOptions>>().Value)) await next();
+        else context.Response.StatusCode = StatusCodes.Status404NotFound;
+    }));
 
 app.MapControllers();
+app.MapMetrics("/metrics");
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
     Predicate = _ => false,
@@ -266,7 +468,7 @@ app.MapFallback("/api/{**path}", () => Results.Problem(
     title: "Not found",
     statusCode: StatusCodes.Status404NotFound,
     extensions: new Dictionary<string, object?> { ["code"] = "not_found" }));
-app.MapFallbackToFile("index.html");
+app.MapFallbackToFile("index.html", new StaticFileOptions { OnPrepareResponse = StaticCaching.Apply });
 
 app.Run();
 

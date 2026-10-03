@@ -1,18 +1,26 @@
+# Production only: one web service, its persistent disk and a managed PostgreSQL database.
+# Create it once from Render's dashboard (New > Blueprint) and fill the prompted values; see docs/deployment.md.
 services:
   - type: web
     name: northlife
     runtime: docker
     region: frankfurt
+    # A paid instance: persistent disks are not available on the free plan.
     plan: 0.5c-512mb
+    branch: main
     dockerfilePath: ./Dockerfile
     dockerContext: .
+    # Deploy a new commit on main only after the GitHub Actions checks pass.
     autoDeployTrigger: checksPass
     healthCheckPath: /health/ready
+    # Migrations run before the new version starts; a failed migration keeps the old version live.
     preDeployCommand: dotnet NorthLife.Api.dll --migrate
+    # One instance only: a disk attaches to a single instance. It holds the uploaded images and the
+    # Data Protection keys that encrypt TOTP secrets, so it must survive deploys and restarts.
     disk:
-      name: event-images
+      name: northlife-data
       mountPath: /var/data
-      sizeGB: 10
+      sizeGB: 5
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
@@ -23,13 +31,35 @@ services:
         fromDatabase:
           name: northlife-db
           property: connectionString
+      - key: ImageStorage__RootPath
+        value: /var/data/images
+      - key: DataProtection__KeysPath
+        value: /var/data/keys
+      # The public site URL, used in the links of verification and reset emails (no trailing slash).
+      - key: Email__PublicBaseUrl
+        sync: false
+      - key: Email__Provider
+        value: Brevo
+      - key: Email__BrevoApiKey
+        sync: false
+      - key: Email__From
+        sync: false
+      - key: Email__FromName
+        value: NorthLife
       - key: GoogleMaps__ApiKey
         sync: false
       - key: GoogleMaps__MapId
         sync: false
+      - key: Google__ClientId
+        sync: false
+      # Bearer token for /metrics, which is otherwise closed.
+      - key: Metrics__Token
+        generateValue: true
 
 databases:
   - name: northlife-db
     region: frankfurt
     plan: 0.1c-256mb
+    postgresMajorVersion: "17"
+    # Reachable only from Render's private network (the web service), not from the internet.
     ipAllowList: []

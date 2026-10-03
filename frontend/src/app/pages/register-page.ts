@@ -3,13 +3,16 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthStore } from '../auth/auth-store';
+import { GoogleButton } from '../auth/google-button';
+import { isAuthenticated } from '../auth/auth.models';
+import { destinationAfterSignIn } from '../auth/sign-in-navigation';
 import { problemCode, problemFieldErrors } from '../shared/problem-details';
 
 const PASSWORD_RULE = 'הסיסמה צריכה להכיל 10–128 תווים, אות גדולה, אות קטנה ומספר.';
 
 @Component({
   selector: 'app-register-page',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, GoogleButton],
   templateUrl: './register-page.html',
   styleUrl: './auth-page.scss',
 })
@@ -52,6 +55,30 @@ export class RegisterPage {
         } else {
           this.errorMessage.set('לא הצלחנו לפתוח את החשבון כרגע. נסו שוב בעוד רגע.');
         }
+      },
+    });
+  }
+
+  /** Google accounts skip the password; new people finish their business profile next. */
+  signUpWithGoogle(idToken: string): void {
+    this.submitting.set(true);
+    this.errorMessage.set('');
+    this.auth.google(idToken).subscribe({
+      next: (result) => {
+        this.submitting.set(false);
+        if (isAuthenticated(result)) {
+          void this.router.navigateByUrl(destinationAfterSignIn(result.user, null));
+        } else if (result.status === 'profile_required') {
+          void this.router.navigate(['/manage/complete-profile'], {
+            state: { signupToken: result.signupToken, email: result.email, fullName: result.fullName },
+          });
+        } else {
+          void this.router.navigate(['/manage/login']);
+        }
+      },
+      error: () => {
+        this.submitting.set(false);
+        this.errorMessage.set('ההרשמה עם Google נכשלה. נסו שוב או הירשמו עם אימייל.');
       },
     });
   }

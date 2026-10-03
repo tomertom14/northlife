@@ -1,5 +1,6 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AnalyticsService } from '../analytics/analytics';
 import { SkyState } from '../public/sky-state';
 import { Clock } from '../shared/clock';
 
@@ -22,7 +23,21 @@ const clockFormatter = new Intl.DateTimeFormat('he-IL', {
 export class PublicLayout {
   private readonly clock = inject(Clock);
   readonly sky = inject(SkyState);
+  readonly analytics = inject(AnalyticsService);
   readonly clockLabel = computed(() => clockFormatter.format(this.clock.now()));
+  readonly resetting = signal(false);
+  readonly resetDone = signal(false);
+
+  resetHistory(): void {
+    this.resetting.set(true);
+    this.analytics.resetHistory().subscribe({
+      next: () => {
+        this.resetting.set(false);
+        this.resetDone.set(true);
+      },
+      error: () => this.resetting.set(false),
+    });
+  }
 
   skipToContent(main: HTMLElement): void {
     main.focus();

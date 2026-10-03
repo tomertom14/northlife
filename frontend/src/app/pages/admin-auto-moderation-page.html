@@ -1,0 +1,146 @@
+<div class="people">
+  <header class="page-head">
+    <h1>אישור אוטומטי</h1>
+  </header>
+  <app-admin-nav />
+  <p class="muted intro">
+    פעם ביום השירות בודק את האירועים שממתינים לאישור. אירוע שעומד בכל ארבעת התנאים מתפרסם, וכל השאר נשארים בתור
+    עם הסבר מה לבדוק. השירות אף פעם לא דוחה אירוע.
+  </p>
+
+  @if (loading()) {
+    <p class="muted" role="status">טוענים את ההגדרות…</p>
+  } @else if (failed()) {
+    <p class="notice notice-error" role="alert">ההגדרות לא נטענו. נסו שוב.</p>
+  } @else if (overview(); as o) {
+    <section class="card status" aria-labelledby="status-title">
+      <div class="status-text">
+        <h2 id="status-title">מצב נוכחי: {{ modeLabels[o.settings.mode] }}</h2>
+        @if (nextRun(); as next) {
+          <p class="muted">ההרצה הבאה: {{ next }}</p>
+        } @else {
+          <p class="muted">השירות כבוי. אין הרצות מתוכננות.</p>
+        }
+      </div>
+      <button type="button" class="btn btn-primary" [disabled]="running() || o.settings.mode === 'Off'" (click)="run()">
+        {{ running() ? 'בודקים…' : 'הרצה עכשיו' }}
+      </button>
+      @if (lastRun()) {
+        <p class="notice notice-success run-result">{{ lastRun() }}</p>
+      }
+    </section>
+
+    @if (form; as f) {
+      <form class="settings" (ngSubmit)="save()" novalidate>
+        <section class="card" aria-labelledby="mode-title">
+          <h2 id="mode-title">מצב פעולה</h2>
+          <fieldset class="modes">
+            <legend class="visually-hidden">מצב פעולה</legend>
+            @for (option of modes; track option.value) {
+              <label class="mode" [class.selected]="f.mode === option.value">
+                <input type="radio" name="mode" [value]="option.value" [(ngModel)]="f.mode" />
+                <span class="mode-text">
+                  <span class="mode-name">{{ modeLabels[option.value] }}</span>
+                  <span class="mode-hint">{{ option.hint }}</span>
+                </span>
+              </label>
+            }
+          </fieldset>
+          <div class="field run-at">
+            <label for="runAt">שעת ההרצה היומית (שעון ישראל)</label>
+            <input class="input" id="runAt" name="runAt" type="time" required [(ngModel)]="f.runAt"
+              [attr.aria-invalid]="errors()['runAt'] ? true : null" />
+            @if (errors()['runAt']) {
+              <span class="field-error">בחרו שעה.</span>
+            }
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="owner-title">
+          <h2 id="owner-title">1. בעל העסק</h2>
+          <p class="muted">נספרים האירועים של בעל העסק שמפורסמים עכשיו. חשבון מושעה או בלי אימייל מאומת תמיד נשאר לבדיקה.</p>
+          <div class="fields">
+            @for (field of ownerFields; track field.key) {
+              <div class="field">
+                <label [for]="field.key">{{ field.label }} ({{ field.unit }})</label>
+                <input class="input" type="number" [id]="field.key" [name]="field.key" [min]="field.min" [max]="field.max"
+                  [step]="field.step ?? 1" [(ngModel)]="f[field.key]" [attr.aria-invalid]="errors()[field.key] ? true : null" />
+                @if (errors()[field.key]) {
+                  <span class="field-error">{{ rangeError(field) }}</span>
+                }
+              </div>
+            }
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="place-title">
+          <h2 id="place-title">2. מקום וזמן</h2>
+          <p class="muted">המקום חייב להיות באזור הצפון: חיפה והכרמל, הגליל, הגולן ועמקי יזרעאל ובית שאן. אירוע שכבר הסתיים לא מאושר.</p>
+          <div class="fields">
+            @for (field of placeFields; track field.key) {
+              <div class="field">
+                <label [for]="field.key">{{ field.label }} ({{ field.unit }})</label>
+                <input class="input" type="number" [id]="field.key" [name]="field.key" [min]="field.min" [max]="field.max"
+                  [step]="field.step ?? 1" [(ngModel)]="f[field.key]" [attr.aria-invalid]="errors()[field.key] ? true : null" />
+                @if (errors()[field.key]) {
+                  <span class="field-error">{{ rangeError(field) }}</span>
+                }
+              </div>
+            }
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="text-title">
+          <h2 id="text-title">3. טקסט</h2>
+          <p class="muted">קישורים, כתובות אימייל ומספרי טלפון בכותרת או בתיאור תמיד משאירים את האירוע לבדיקה.</p>
+          <div class="field">
+            <label for="bannedWords">מילים אסורות, אחת בכל שורה</label>
+            <textarea class="input" id="bannedWords" name="bannedWords" rows="5" aria-describedby="bannedWords-hint"
+              [(ngModel)]="bannedWordsText" [attr.aria-invalid]="errors()['bannedWords'] ? true : null"></textarea>
+            <span class="field-hint" id="bannedWords-hint">נמצאות גם עם ניקוד, באותיות סופיות, ועם תחיליות כמו ו־, ה־ או ב־.</span>
+            @if (errors()['bannedWords']) {
+              <span class="field-error">עד 200 מילים, כל אחת עד 50 תווים.</span>
+            }
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="duplicate-title">
+          <h2 id="duplicate-title">4. כפילויות</h2>
+          <p class="muted">אירוע נחשב כפול כשהוא מתחיל באותו יום, קרוב לאירוע קיים, והטקסט שלו דומה לו.</p>
+          <div class="fields">
+            @for (field of duplicateFields; track field.key) {
+              <div class="field">
+                <label [for]="field.key">{{ field.label }} ({{ field.unit }})</label>
+                <input class="input" type="number" [id]="field.key" [name]="field.key" [min]="field.min" [max]="field.max"
+                  [step]="field.step ?? 1" [(ngModel)]="f[field.key]" [attr.aria-invalid]="errors()[field.key] ? true : null" />
+                @if (errors()[field.key]) {
+                  <span class="field-error">{{ rangeError(field) }}</span>
+                }
+              </div>
+            }
+          </div>
+        </section>
+
+        <div class="save-row">
+          <button type="submit" class="btn btn-primary" [disabled]="saving()">{{ saving() ? 'שומרים…' : 'שמירת ההגדרות' }}</button>
+        </div>
+      </form>
+    }
+
+    <section class="card" aria-labelledby="runs-title">
+      <h2 id="runs-title">הרצות אחרונות</h2>
+      @if (o.runs.length === 0) {
+        <p class="muted">עוד לא היו הרצות.</p>
+      } @else {
+        <ul class="timeline runs">
+          @for (run of o.runs; track run.id) {
+            <li>
+              <span class="when">{{ when(run.startedAt) }}, {{ trigger(run) }}, {{ modeLabels[run.mode] }}</span>
+              <span class="what" [class.failed]="run.failed">{{ run.failed ? 'ההרצה לא הסתיימה. היא תנסה שוב בבדיקה הבאה.' : summary(run) }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+</div>

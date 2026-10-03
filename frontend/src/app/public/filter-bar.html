@@ -22,6 +22,14 @@
   </div>
 
   <div class="fields">
+    <div class="sorts" role="group" aria-label="סדר">
+      @for (option of sorts; track option) {
+        <button type="button" class="sort" [attr.aria-pressed]="sort() === option" (click)="sortChange.emit(option)">
+          {{ sortLabels[option] }}
+        </button>
+      }
+    </div>
+
     <label class="compact">
       <span>איפה</span>
       <input

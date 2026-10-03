@@ -66,3 +66,11 @@ h2 {
   color: var(--muted);
   font-size: 0.9375rem;
 }
+
+.geo-message {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 0.75rem auto 0;
+  max-width: var(--page-max);
+  padding: 0 var(--gutter);
+}

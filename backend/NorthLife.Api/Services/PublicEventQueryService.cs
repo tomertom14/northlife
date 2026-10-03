@@ -1,15 +1,32 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using NorthLife.Api.Contracts;
 using NorthLife.Api.Data;
 using NorthLife.Api.Models;
+using NorthLife.Api.Ranking;
 
 namespace NorthLife.Api.Services;
 
 public sealed class PublicEventQueryService(
     AppDbContext dbContext,
     TimeProvider timeProvider,
-    EventTimeWindowFactory windowFactory)
+    EventTimeWindowFactory windowFactory,
+    IOptions<RankingOptions> ranking,
+    IMemoryCache cache)
 {
+    /// <summary>
+    /// How long a computed hot ranking is reused for the same filters and location. Popularity and
+    /// start-time proximity drift slowly, so half a minute of staleness is invisible, and every
+    /// request no longer scores thousands of candidates.
+    /// </summary>
+    public static readonly TimeSpan HotRankingLifetime = TimeSpan.FromSeconds(30);
+
+    /// <summary>Upper bound on events scored in memory for "hot"; far above a two-week northern catalogue.</summary>
+    public const int MaxRankedCandidates = 5000;
+
+    private static readonly string[] Sorts = ["time", "hot", "near"];
+
     public async Task<PagedResponse<EventSummaryResponse>> GetPageAsync(
         PublicEventQueryParameters parameters,
         CancellationToken cancellationToken)
@@ -21,7 +38,7 @@ public sealed class PublicEventQueryService(
             dbContext.Events
                 .AsNoTracking()
                 .Where(eventItem =>
-                    eventItem.Status == EventStatus.Published &&
+                    eventItem.Status == EventStatus.Published && eventItem.Owner.SuspendedAtUtc == null &&
                     eventItem.EndAtUtc > now),
             parameters);
 
@@ -29,6 +46,14 @@ public sealed class PublicEventQueryService(
 
         var totalCount = await query.CountAsync(cancellationToken);
         var skip = CalculateSkip(parameters.Page, parameters.PageSize);
+
+        switch (SortOf(parameters))
+        {
+            case "hot":
+                return await HotPageAsync(query, parameters, skip, totalCount, now, cancellationToken);
+            case "near":
+                return await NearPageAsync(query, parameters, skip, totalCount, cancellationToken);
+        }
 
         var rows = await query
             .OrderBy(eventItem => eventItem.StartAtUtc)
@@ -55,6 +80,185 @@ public sealed class PublicEventQueryService(
             totalCount);
     }
 
+    /// <summary>
+    /// Ids of public events matching the feed filters (all upcoming ones when <paramref name="parameters"/>
+    /// is null), soonest first; recommendations draw only from these.
+    /// </summary>
+    public async Task<List<Guid>> EligibleIdsAsync(PublicEventQueryParameters? parameters, CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+        var query = dbContext.Events.AsNoTracking().Where(eventItem =>
+            eventItem.Status == EventStatus.Published && eventItem.Owner.SuspendedAtUtc == null && eventItem.EndAtUtc > now);
+        if (parameters is not null)
+        {
+            Validate(parameters);
+            query = ApplyPeriod(ApplySharedFilters(query, parameters), parameters, now);
+        }
+
+        return await query
+            .OrderBy(eventItem => eventItem.StartAtUtc)
+            .ThenBy(eventItem => eventItem.Id)
+            .Select(eventItem => eventItem.Id)
+            .Take(MaxRankedCandidates)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<Dictionary<Guid, EventSummaryResponse>> SummariesAsync(IReadOnlyList<Guid> ids, CancellationToken cancellationToken)
+    {
+        var wanted = ids.ToList();
+        var rows = await dbContext.Events.AsNoTracking()
+            .Where(eventItem => wanted.Contains(eventItem.Id))
+            .Select(eventItem => new EventSummaryRow(
+                eventItem.Id,
+                eventItem.Title,
+                eventItem.StartAtUtc,
+                eventItem.EndAtUtc,
+                eventItem.VenueName,
+                eventItem.Locality,
+                eventItem.Price,
+                eventItem.Category,
+                eventItem.ImageId,
+                eventItem.IsHighlighted))
+            .ToListAsync(cancellationToken);
+        return rows.ToDictionary(row => row.Id, row => ToSummary(row));
+    }
+
+    /// <summary>"Hot now": score every matching event (<see cref="HotScore"/>), sort, then page.</summary>
+    private async Task<PagedResponse<EventSummaryResponse>> HotPageAsync(
+        IQueryable<Event> query,
+        PublicEventQueryParameters parameters,
+        int skip,
+        int totalCount,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var visitor = Location(parameters);
+        var key = string.Join('|', "hot", parameters.Period, parameters.From, parameters.To, parameters.Category, parameters.Locality,
+            parameters.MaxPrice, visitor?.Latitude.ToString("F3"), visitor?.Longitude.ToString("F3"));
+        var ranked = await cache.GetOrCreateAsync(key, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = HotRankingLifetime;
+            return await RankHotAsync(query, visitor, now, cancellationToken);
+        }) ?? [];
+
+        // Randomised top-N on a share of first pages, so position bias stays measurable. The cached
+        // ranking is copied first, never shuffled in place.
+        var page = ranked.Skip(skip).Take(parameters.PageSize).ToList();
+        if (parameters.Page == 1 && Random.Shared.NextDouble() < ranking.Value.ExplorationRate)
+        {
+            page = [.. ranked.Take(Math.Max(parameters.PageSize, ranking.Value.ExplorationDepth))];
+            Exploration.ShuffleTop(page, ranking.Value.ExplorationDepth, Random.Shared);
+            page = [.. page.Take(parameters.PageSize)];
+        }
+
+        return new PagedResponse<EventSummaryResponse>(
+            page.Select(item => ToSummaryAt(item.Row, item.DistanceKm)).ToList(),
+            parameters.Page,
+            parameters.PageSize,
+            totalCount);
+    }
+
+    private async Task<List<RankedRow>> RankHotAsync(
+        IQueryable<Event> query,
+        (double Latitude, double Longitude)? visitor,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var candidates = await query
+            .OrderBy(eventItem => eventItem.StartAtUtc)
+            .ThenBy(eventItem => eventItem.Id)
+            .Take(MaxRankedCandidates)
+            .Select(eventItem => new
+            {
+                Row = new EventSummaryRow(
+                    eventItem.Id,
+                    eventItem.Title,
+                    eventItem.StartAtUtc,
+                    eventItem.EndAtUtc,
+                    eventItem.VenueName,
+                    eventItem.Locality,
+                    eventItem.Price,
+                    eventItem.Category,
+                    eventItem.ImageId,
+                    eventItem.IsHighlighted),
+                eventItem.Latitude,
+                eventItem.Longitude,
+                PopularityLog = dbContext.EventPopularity
+                    .Where(popularity => popularity.EventId == eventItem.Id)
+                    .Select(popularity => (double?)popularity.LogScore)
+                    .FirstOrDefault(),
+            })
+            .ToListAsync(cancellationToken);
+
+        var rows = candidates.ToDictionary(candidate => candidate.Row.Id, candidate => candidate.Row);
+        return HotScore.Rank(
+                candidates.Select(candidate => new HotCandidate(
+                    candidate.Row.Id,
+                    candidate.Row.StartAtUtc,
+                    candidate.Row.EndAtUtc,
+                    (double)candidate.Latitude,
+                    (double)candidate.Longitude,
+                    candidate.Row.IsHighlighted,
+                    candidate.PopularityLog)).ToList(),
+                now,
+                ranking.Value,
+                visitor)
+            .Select(pair => new RankedRow(
+                rows[pair.Candidate.Id],
+                visitor is { } location ? Haversine.DistanceKm(location.Latitude, location.Longitude, pair.Candidate.Latitude, pair.Candidate.Longitude) : null))
+            .ToList();
+    }
+
+    private sealed record RankedRow(EventSummaryRow Row, double? DistanceKm);
+
+    /// <summary>"Near me": the k nearest matching events by geohash cells and exact haversine distance.</summary>
+    private async Task<PagedResponse<EventSummaryResponse>> NearPageAsync(
+        IQueryable<Event> query,
+        PublicEventQueryParameters parameters,
+        int skip,
+        int totalCount,
+        CancellationToken cancellationToken)
+    {
+        var (latitude, longitude) = Location(parameters)!.Value;
+        var result = await NearestEvents.FindAsync<EventSummaryRow>(
+            latitude,
+            longitude,
+            skip + parameters.PageSize,
+            ranking.Value.NearMaxRadiusKm,
+            async prefixes =>
+            {
+                var rows = await query
+                    .Where(GeohashFilter.StartsWithAny(prefixes))
+                    .Select(eventItem => new
+                    {
+                        Row = new EventSummaryRow(
+                            eventItem.Id,
+                            eventItem.Title,
+                            eventItem.StartAtUtc,
+                            eventItem.EndAtUtc,
+                            eventItem.VenueName,
+                            eventItem.Locality,
+                            eventItem.Price,
+                            eventItem.Category,
+                            eventItem.ImageId,
+                            eventItem.IsHighlighted),
+                        eventItem.Latitude,
+                        eventItem.Longitude,
+                    })
+                    .ToListAsync(cancellationToken);
+                return rows.Select(row => new GeoCandidate<EventSummaryRow>(row.Row, (double)row.Latitude, (double)row.Longitude)).ToList() as IReadOnlyList<GeoCandidate<EventSummaryRow>>;
+            });
+
+        var page = result.Items.Skip(skip).Take(parameters.PageSize).Select(pair => ToSummaryAt(pair.Item, pair.DistanceKm));
+        return new PagedResponse<EventSummaryResponse>(page.ToList(), parameters.Page, parameters.PageSize, totalCount);
+    }
+
+    private static string SortOf(PublicEventQueryParameters parameters) =>
+        string.IsNullOrWhiteSpace(parameters.Sort) ? "time" : parameters.Sort.Trim().ToLowerInvariant();
+
+    private static (double Latitude, double Longitude)? Location(PublicEventQueryParameters parameters) =>
+        parameters is { Latitude: { } latitude, Longitude: { } longitude } ? (latitude, longitude) : null;
+
     public async Task<IReadOnlyList<EventSummaryResponse>> GetTopPicksAsync(
         PublicEventQueryParameters parameters,
         CancellationToken cancellationToken)
@@ -78,7 +282,7 @@ public sealed class PublicEventQueryService(
             dbContext.Events
                 .AsNoTracking()
                 .Where(eventItem =>
-                    eventItem.Status == EventStatus.Published &&
+                    eventItem.Status == EventStatus.Published && eventItem.Owner.SuspendedAtUtc == null &&
                     eventItem.IsHighlighted &&
                     eventItem.EndAtUtc > now),
             topPickQuery);
@@ -114,7 +318,7 @@ public sealed class PublicEventQueryService(
             .AsNoTracking()
             .Where(eventItem =>
                 eventItem.Id == id &&
-                eventItem.Status == EventStatus.Published &&
+                eventItem.Status == EventStatus.Published && eventItem.Owner.SuspendedAtUtc == null &&
                 eventItem.EndAtUtc > now)
             .Select(eventItem => new EventDetailsRow(
                 eventItem.Id,
@@ -134,10 +338,21 @@ public sealed class PublicEventQueryService(
                 eventItem.ImageId,
                 eventItem.IsHighlighted))
             .SingleOrDefaultAsync(cancellationToken);
+        if (row is null) return null;
 
-        return row is null
-            ? null
-            : new EventDetailsResponse(
+        // The linked place is shown only while it is public itself.
+        var place = await dbContext.Events
+            .AsNoTracking()
+            .Where(eventItem =>
+                eventItem.Id == id &&
+                eventItem.Place != null &&
+                eventItem.Place.DeletedAtUtc == null &&
+                eventItem.Place.Status == EventStatus.Published &&
+                eventItem.Place.Owner.SuspendedAtUtc == null)
+            .Select(eventItem => new EventPlaceLink(eventItem.Place!.Id, eventItem.Place.Name))
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return new EventDetailsResponse(
                 row.Id,
                 row.Title,
                 row.Description,
@@ -153,7 +368,8 @@ public sealed class PublicEventQueryService(
                 row.OrganizerName,
                 row.Tags,
                 ImageUrl(row.ImageId),
-                row.IsHighlighted);
+                row.IsHighlighted,
+                place);
     }
 
     public async Task<MapEventsResponse> GetMapAsync(
@@ -166,7 +382,7 @@ public sealed class PublicEventQueryService(
         var now = timeProvider.GetUtcNow();
         var query = ApplySharedFilters(
             dbContext.Events.AsNoTracking().Where(eventItem =>
-                eventItem.Status == EventStatus.Published &&
+                eventItem.Status == EventStatus.Published && eventItem.Owner.SuspendedAtUtc == null &&
                 eventItem.EndAtUtc > now &&
                 eventItem.Latitude >= map.South && eventItem.Latitude <= map.North &&
                 eventItem.Longitude >= map.West && eventItem.Longitude <= map.East),
@@ -272,6 +488,22 @@ public sealed class PublicEventQueryService(
                 "Page size must be between 1 and 100.");
         }
 
+        if (!Sorts.Contains(SortOf(parameters)))
+        {
+            throw new PublicEventQueryValidationException("sort", "Sort must be time, hot or near.");
+        }
+
+        if (parameters.Latitude is < -90 or > 90 || parameters.Longitude is < -180 or > 180 ||
+            (parameters.Latitude is null) != (parameters.Longitude is null))
+        {
+            throw new PublicEventQueryValidationException("latitude", "Send both latitude and longitude, within range.");
+        }
+
+        if (SortOf(parameters) == "near" && parameters.Latitude is null)
+        {
+            throw new PublicEventQueryValidationException("latitude", "Sorting by distance needs the visitor's location.");
+        }
+
         if (parameters.MaxPrice < 0)
         {
             throw new PublicEventQueryValidationException(
@@ -309,7 +541,9 @@ public sealed class PublicEventQueryService(
         }
     }
 
-    private static EventSummaryResponse ToSummary(EventSummaryRow row) =>
+    private static EventSummaryResponse ToSummary(EventSummaryRow row) => ToSummaryAt(row, null);
+
+    private static EventSummaryResponse ToSummaryAt(EventSummaryRow row, double? distanceKm) =>
         new(
             row.Id,
             row.Title,
@@ -320,7 +554,8 @@ public sealed class PublicEventQueryService(
             row.Price,
             row.Category,
             ImageUrl(row.ImageId),
-            row.IsHighlighted);
+            row.IsHighlighted,
+            distanceKm is null ? null : Math.Round(distanceKm.Value, 2));
 
     private static string ImageUrl(Guid imageId) => $"/api/images/{imageId}";
 

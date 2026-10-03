@@ -38,6 +38,11 @@ export class PublicEventsApi {
   private toParams(filters: PublicEventFilters, includePage: boolean): HttpParams {
     let params = new HttpParams().set('period', filters.period);
 
+    if (filters.sort && filters.sort !== 'time') params = params.set('sort', filters.sort);
+    if (filters.latitude !== undefined && filters.longitude !== undefined) {
+      params = params.set('latitude', filters.latitude).set('longitude', filters.longitude);
+    }
+
     if (filters.category) params = params.set('category', filters.category);
     if (filters.locality) params = params.set('locality', filters.locality);
     if (filters.maxPrice !== undefined) params = params.set('maxPrice', filters.maxPrice);

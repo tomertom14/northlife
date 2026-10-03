@@ -13,9 +13,15 @@ public sealed class AuthTokenService(
     TimeProvider timeProvider)
 {
     public const string BusinessNameClaim = "northlife:business_name";
+
+    /// <summary>"true" only when this session passed the TOTP or backup-code step.</summary>
+    public const string MfaClaim = "northlife:mfa";
+
+    /// <summary>The account's security stamp at issue time; see <see cref="SessionValidator"/>.</summary>
+    public const string StampClaim = "northlife:stamp";
     private readonly JwtOptions _options = options.Value;
 
-    public AuthResponse Create(AppUser user)
+    public AuthResponse Create(AppUser user, bool mfaVerified = false)
     {
         var now = timeProvider.GetUtcNow();
         var expiresAt = now.AddMinutes(_options.TokenLifetimeMinutes);
@@ -26,6 +32,8 @@ public sealed class AuthTokenService(
             new Claim(ClaimTypes.Name, user.FullName),
             new Claim(ClaimTypes.Role, user.Role.ToString()),
             new Claim(BusinessNameClaim, user.BusinessName),
+            new Claim(MfaClaim, mfaVerified ? "true" : "false"),
+            new Claim(StampClaim, user.SecurityStamp),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
         };
         var credentials = new SigningCredentials(
@@ -43,11 +51,17 @@ public sealed class AuthTokenService(
         return new AuthResponse(
             new JwtSecurityTokenHandler().WriteToken(token),
             expiresAt,
-            new AuthUserResponse(
-                user.Id,
-                user.FullName,
-                user.Email,
-                user.BusinessName,
-                user.Role));
+            ToUserResponse(user, mfaVerified));
     }
+
+    public static AuthUserResponse ToUserResponse(AppUser user, bool mfaVerified) =>
+        new(
+            user.Id,
+            user.FullName,
+            user.Email,
+            user.BusinessName,
+            user.Role,
+            user.EmailConfirmed,
+            user.TotpEnabled,
+            mfaVerified);
 }

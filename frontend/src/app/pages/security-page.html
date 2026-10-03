@@ -1,0 +1,88 @@
+<div class="security">
+  <header class="page-head">
+    <h1>אבטחת החשבון</h1>
+    <a class="btn btn-quiet" [routerLink]="homeLink()">חזרה</a>
+  </header>
+
+  @if (required && !auth.user()?.mfaVerified && !recoveryCodes().length) {
+    <p class="notice notice-warning" role="status">חשבונות מנהל חייבים אימות דו-שלבי. הפעילו אותו כדי להמשיך למרכז הבקרה.</p>
+  }
+
+  @if (recoveryCodes().length) {
+    <section class="card" aria-labelledby="codes-title">
+      <h2 id="codes-title">שמרו את קודי הגיבוי</h2>
+      <p class="lead">כל קוד עובד פעם אחת, אם אין לכם גישה לאפליקציה. הם לא יוצגו שוב.</p>
+      <ol class="codes" dir="ltr">
+        @for (code of recoveryCodes(); track code) {
+          <li>{{ code }}</li>
+        }
+      </ol>
+      <div class="actions">
+        <button type="button" class="btn" (click)="copyCodes()">העתקת הקודים</button>
+        <button type="button" class="btn btn-primary" (click)="finish()">שמרתי, אפשר להמשיך</button>
+      </div>
+    </section>
+  } @else {
+    <section class="card" aria-labelledby="totp-title">
+      <div class="card-head">
+        <h2 id="totp-title">אימות דו-שלבי</h2>
+        @if (status(); as current) {
+          <span class="state" [class.on]="current.totpEnabled">{{ current.totpEnabled ? 'פעיל' : 'כבוי' }}</span>
+        }
+      </div>
+      <p class="lead">בכל כניסה תתבקשו גם לקוד משתנה מאפליקציית אימות, כמו Google Authenticator או Microsoft Authenticator.</p>
+
+      @if (setup(); as pending) {
+        <ol class="steps">
+          <li>
+            <span>סרקו את הקוד באפליקציית האימות.</span>
+            <img class="qr" [src]="pending.qrCodeDataUri" alt="קוד QR להוספת NorthLife לאפליקציית האימות" width="216" height="216" />
+            <span class="manual">אי אפשר לסרוק? הקלידו את המפתח: <code dir="ltr">{{ pending.secret }}</code></span>
+          </li>
+          <li>
+            <label class="field" for="totp-confirm">כתבו את הקוד בן 6 הספרות שמופיע באפליקציה</label>
+            <input class="input code" id="totp-confirm" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" [(ngModel)]="code" />
+          </li>
+        </ol>
+        @if (error()) { <p class="notice notice-error" role="alert">{{ error() }}</p> }
+        <div class="actions">
+          <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="confirmSetup()">{{ busy() ? 'בודקים…' : 'הפעלה' }}</button>
+          <button type="button" class="btn btn-quiet" (click)="setup.set(null)">ביטול</button>
+        </div>
+      } @else if (status()?.totpEnabled) {
+        <p class="meta">נשארו {{ status()?.recoveryCodesLeft }} קודי גיבוי.</p>
+        @if (isAdmin()) {
+          <p class="meta">בחשבון מנהל אי אפשר לכבות את האימות. אפשר להגדיר מכשיר חדש.</p>
+          <div class="actions"><button type="button" class="btn" [disabled]="busy()" (click)="beginSetup()">הגדרת מכשיר חדש</button></div>
+        } @else if (disabling()) {
+          <label class="field" for="totp-disable">כדי לכבות, כתבו קוד מהאפליקציה או קוד גיבוי</label>
+          <input class="input code" id="totp-disable" name="disableCode" autocomplete="one-time-code" [(ngModel)]="code" />
+          @if (error()) { <p class="notice notice-error" role="alert">{{ error() }}</p> }
+          <div class="actions">
+            <button type="button" class="btn btn-danger" [disabled]="busy()" (click)="disable()">כיבוי האימות</button>
+            <button type="button" class="btn btn-quiet" (click)="disabling.set(false); code = ''">ביטול</button>
+          </div>
+        } @else {
+          <div class="actions">
+            <button type="button" class="btn" [disabled]="busy()" (click)="beginSetup()">הגדרת מכשיר חדש</button>
+            <button type="button" class="btn btn-danger" (click)="disabling.set(true)">כיבוי</button>
+          </div>
+        }
+      } @else if (status()) {
+        @if (error()) { <p class="notice notice-error" role="alert">{{ error() }}</p> }
+        <div class="actions"><button type="button" class="btn btn-primary" [disabled]="busy()" (click)="beginSetup()">הפעלת אימות דו-שלבי</button></div>
+      }
+    </section>
+
+    @if (status(); as current) {
+      <section class="card" aria-labelledby="account-title">
+        <h2 id="account-title">פרטי כניסה</h2>
+        <dl class="facts">
+          <div><dt>אימייל</dt><dd>{{ auth.user()?.email }} {{ current.emailConfirmed ? '(מאומת)' : '(לא מאומת)' }}</dd></div>
+          <div><dt>סיסמה</dt><dd>{{ current.hasPassword ? 'מוגדרת' : 'אין. הכניסה היא עם Google בלבד' }}</dd></div>
+          <div><dt>Google</dt><dd>{{ current.googleLinked ? 'מחובר' : 'לא מחובר' }}</dd></div>
+        </dl>
+      </section>
+    }
+  }
+</div>

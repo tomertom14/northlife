@@ -25,6 +25,8 @@ export interface OwnerEvent {
   rejectionReason?: string;
   updatedAt: string;
   revision: number;
+  /** One of the owner's places, when the event happens there. */
+  placeId?: string | null;
 }
 
 export interface OwnerEventInput {
@@ -43,6 +45,7 @@ export interface OwnerEventInput {
   organizerName: string;
   tags: string[];
   revision?: number;
+  placeId?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })

@@ -1,10 +1,18 @@
 <div class="map-page">
   <header class="map-head">
     <div class="intro">
-      <h1>אירועים על המפה</h1>
-      <p>מה קורה היום בכל רחבי הצפון. אירועים באותה נקודה מקובצים לסמן אחד.</p>
+      <h1>{{ layer() === 'places' ? 'מקומות על המפה' : 'אירועים על המפה' }}</h1>
+      <p>
+        {{ layer() === 'places'
+          ? 'מסעדות, בתי קפה, ברים, חוגים ושירותים בכל רחבי הצפון. מקומות קרובים מקובצים לסמן אחד.'
+          : 'מה קורה היום בכל רחבי הצפון. אירועים באותה נקודה מקובצים לסמן אחד.' }}
+      </p>
     </div>
     <div class="map-actions">
+      <div class="layers" role="group" aria-label="מה להציג">
+        <button type="button" class="layer" [attr.aria-pressed]="layer() === 'events'" (click)="setLayer('events')">אירועים היום</button>
+        <button type="button" class="layer" [attr.aria-pressed]="layer() === 'places'" (click)="setLayer('places')">מקומות</button>
+      </div>
       <button type="button" class="btn" (click)="useMyLocation()">ליד המיקום שלי</button>
       @if (mapState() === 'ready') {
         <button type="button" class="btn btn-primary" (click)="searchVisibleArea()">חיפוש באזור המוצג</button>
@@ -16,33 +24,48 @@
     <p class="notice notice-success" role="status">{{ locationMessage() }}</p>
   }
   @if (truncated()) {
-    <p class="notice notice-warning" role="status">מוצגים 200 אירועים בלבד. התקרבו במפה וחפשו שוב באזור המוצג.</p>
+    <p class="notice notice-warning" role="status">
+      {{ layer() === 'places' ? 'מוצגים 500 מקומות בלבד.' : 'מוצגים 200 אירועים בלבד.' }} התקרבו במפה וחפשו שוב באזור המוצג.
+    </p>
   }
   @if (mapState() === 'unavailable') {
     <p class="notice notice-warning" role="status">המפה לא זמינה כרגע. הרשימה והניווט ממשיכים לעבוד.</p>
   }
 
-  <div #mapHost class="map-host" [class.hidden]="mapState() !== 'ready'" role="region" aria-label="מפת אירועים"></div>
+  <div #mapHost class="map-host" [class.hidden]="mapState() !== 'ready'" role="region" [attr.aria-label]="layer() === 'places' ? 'מפת מקומות' : 'מפת אירועים'"></div>
 
   <section class="map-list" aria-labelledby="map-list-title" [attr.aria-busy]="loading()">
     <div class="list-head">
-      <h2 id="map-list-title">אירועים באזור</h2>
+      <h2 id="map-list-title">{{ layer() === 'places' ? 'מקומות באזור' : 'אירועים באזור' }}</h2>
       @if (!loading() && !failed()) {
         <span>{{ summary() }}</span>
       }
     </div>
 
     @if (loading()) {
-      <p class="muted">מחפשים אירועים באזור…</p>
+      <p class="muted">{{ layer() === 'places' ? 'מחפשים מקומות באזור…' : 'מחפשים אירועים באזור…' }}</p>
     } @else if (failed()) {
-      <div class="notice notice-error" role="alert">האירועים לא נטענו. בדקו את החיבור ונסו שוב.</div>
+      <div class="notice notice-error" role="alert">{{ layer() === 'places' ? 'המקומות לא נטענו.' : 'האירועים לא נטענו.' }} בדקו את החיבור ונסו שוב.</div>
+    } @else if (layer() === 'places') {
+      <ol class="rows">
+        @for (place of places(); track place.id) {
+          <li class="row">
+            <span class="time" [class.open]="place.isOpen">{{ place.isOpen ? 'פתוח' : 'סגור' }}</span>
+            <span class="text">
+              <a class="title" [routerLink]="['/places', place.id]">{{ place.name }}</a>
+              <span class="place"><span class="cat-dot" [style.--dot]="colors[placeCover[place.category]]"></span>{{ placeLabels[place.category] }}, {{ place.locality }}</span>
+            </span>
+            <a class="btn navigate" [href]="navigationUrl(place)" target="_blank" rel="noopener">ניווט</a>
+          </li>
+        }
+      </ol>
     } @else {
       <ol class="rows">
         @for (event of events(); track event.id) {
           <li class="row">
             <span class="time">{{ time(event.startAt) }}</span>
             <span class="text">
-              <a class="title" [routerLink]="['/events', event.id]">{{ event.title }}</a>
+              <a class="title" [routerLink]="['/events', event.id]" [state]="{ source: 'Map' }">{{ event.title }}</a>
               <span class="place"><span class="cat-dot" [style.--dot]="colors[event.category]"></span>{{ event.venueName }}, {{ event.address }}, {{ event.locality }}</span>
             </span>
             <a class="btn navigate" [href]="navigationUrl(event)" target="_blank" rel="noopener">ניווט</a>
