@@ -56,7 +56,14 @@ Use the service's real address, shown at the top of its Render page.
   - Authorized JavaScript origins: add `https://<service>.onrender.com`.
   - Sign-in uses Google Identity Services ID tokens, so no redirect URI is needed.
   - On the OAuth consent screen, publish the app ("In production"). Otherwise only the listed test users can sign in.
+- **Brevo:** new Brevo accounts refuse API calls from unknown IP addresses.
+  - Without this step every email fails, and the service log shows `Sending the "…" email failed.` with `401 (Unauthorized)`.
+  - Open the service's **Connect › Outbound** tab in Render. It lists the outbound IP ranges, which are shared by every service in the region; the service can send from any address in them.
+  - Add every listed address in Brevo › account menu › **Security › Authorized IPs**.
+  - The change applies at once, with no redeploy.
 - **`Email__PublicBaseUrl`:** correct it in the Environment tab if Render changed the name.
+
+If a Google setting is missing, the browser console names it: `RefererNotAllowedMapError` means the Maps key's referrer list, and "The given origin is not allowed for the given client ID" means the OAuth client's JavaScript origins.
 
 ## 4. Create the administrator, once
 
@@ -69,6 +76,12 @@ BootstrapAdmin__FullName='Site Admin' \
 dotnet NorthLife.Api.dll --bootstrap-admin
 history -c
 ```
+
+The command only works if:
+- every variable starts with `BootstrapAdmin__` (two underscores);
+- the password has 10 to 128 characters, with upper and lower case letters and a digit.
+
+A missing variable stops it with "BootstrapAdmin:Password is required". A weak password stops it with an `AuthValidationException`.
 
 Then sign in at `/manage/login`:
 - The admin area asks you to enrol an authenticator app (TOTP) before it opens.
