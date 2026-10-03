@@ -222,8 +222,9 @@ jobs:
           curl --fail --silent --request POST http://127.0.0.1:5080/api/analytics/events --header 'Content-Type: application/json' --data "{\"visitorId\":\"$reco_visitor\",\"interactions\":[{\"eventId\":\"$first_event\",\"type\":\"DetailView\",\"source\":\"Feed\",\"position\":1}]}" | jq -e '.recorded == 1'
           curl --fail --silent "http://127.0.0.1:5080/api/recommendations?visitorId=$reco_visitor&limit=5" | jq -e --arg id "$first_event" '.personalised == true and all(.items[]; .event.id != $id)'
           curl --fail --silent "http://127.0.0.1:5080/api/events/$first_event/similar" | jq -e --arg id "$first_event" 'length >= 1 and all(.[]; .id != $id)'
-          dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --evaluate-recommendations evaluation.md > /dev/null
-          grep -q 'Oracle' evaluation.md
+          # An absolute path: dotnet run starts the app in the project folder, not the repository root.
+          dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --evaluate-recommendations "$PWD/evaluation.md" > /dev/null
+          grep -q 'Oracle' "$PWD/evaluation.md"
 
           rejected_payload=$(echo "$event_payload" | jq '.title = "CI rejected event"')
           rejected_event=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/manage/events --header "Authorization: Bearer $token" --header 'Content-Type: application/json' --data "$rejected_payload")
