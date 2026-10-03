@@ -158,7 +158,7 @@ The palette was checked with the dataviz validator: series blue and orange pass 
 | `RateLimiting__AnalyticsPermitsPerMinute` | 120 | Ingestion rate limit per client address. |
 | `Metrics__Token` | (none) | Bearer token for `/metrics`. |
 | `Metrics__AllowPrivateNetwork` | false | Local Docker only. |
-| `Demo__OwnerPassword` | (none) | Password for the demo owners that `--seed-demo` creates. |
+| `Demo__OwnerPassword` | (none) | Password for the demo owners that `--seed-demo` creates. `--refresh-demo` does not change passwords. |
 
 ## Demo data and the persona simulator
 
@@ -167,6 +167,13 @@ The palette was checked with the dataviz validator: series blue and orange pass 
 - **30 days of simulated traffic** from about 1,500 synthetic visitors.
 
 The traffic is loaded with binary `COPY` below the rollup checkpoint and rolled up with the same code the worker uses, so it is never counted twice.
+
+The catalogue only covers the two weeks after the seed. `--refresh-demo` brings it back:
+- It puts the 64 catalogue events on the schedule a seed run today would give them (`DemoCatalog.Schedule`). The fixed random seed keeps every venue, price and start hour, so only the dates move.
+- It deletes the traffic and statistics of those events (raw rows, hourly and daily rows, popularity), real visits included, and writes a new simulated month in the same way as the seed.
+- Both the seed and the refresh hold the rollup worker's advisory lock while they write, so they can run against a live site.
+- Accounts, places, images and place links stay. Events are matched by owner and title: events the demo owners added themselves, and renamed catalogue events, keep their dates and visits.
+- It ends by rebuilding the recommendation model, so similar events are current at once.
 
 The simulator (`Analytics/SyntheticTraffic.cs`):
 - Each visitor has category tastes drawn from a sparse Dirichlet(0.4) distribution, a home town, a visit rate and a price sensitivity.
@@ -187,7 +194,9 @@ The simulator (`Analytics/SyntheticTraffic.cs`):
   - Spike detector: noise, a jump, a ramp, tiny counts.
   - Rollup: hourly and Jerusalem-day bucketing.
   - Simulator: determinism, deduplication and the position effect.
+  - Demo schedule: reproducible, unique titles, every event still ahead and within two weeks (also across daylight saving time changes), every category on today's feed, and only the dates depend on the day of the seed.
   - `/metrics` access control.
+- **CI:** after `--seed-demo`, the demo is aged by three weeks and its old traffic marked. `--refresh-demo` must bring all 64 events back within the coming two weeks, remove the marked rows, and leave raw rows and daily totals equal.
 - **End to end:**
   - `phase-13-analytics.ps1` (31 checks): ingestion rules, 300 synthetic visitors, rollup, HyperLogLog union semantics, isolation, forget, seeded spikes, retention, metrics.
   - `phase-13-browser-tracking.mjs` (8 checks, real Edge): viewability impressions, click position carried to the event page, navigation, reset.

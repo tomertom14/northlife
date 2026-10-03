@@ -64,6 +64,22 @@ jobs:
       - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --seed-data
       - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --bootstrap-admin
       - run: dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --seed-demo
+      - name: Refresh an expired demo
+        shell: bash
+        run: |
+          sql() { PGPASSWORD=northlife_ci_only psql --host localhost --username northlife --dbname northlife --tuples-only --no-align --quiet --command "$1"; }
+          demo="SELECT events.id FROM events JOIN users ON users.id = events.owner_id WHERE users.email LIKE 'owner_@demo.northlife.local'"
+          # As if the seed were three weeks old: the events are over, and the old traffic carries markers.
+          sql "UPDATE events SET start_at_utc = start_at_utc - interval '21 days', end_at_utc = end_at_utc - interval '21 days' WHERE id IN ($demo)"
+          sql "UPDATE event_stats_daily SET impressions = impressions + 1000000 WHERE event_id IN ($demo)"
+          sql "INSERT INTO interactions (event_id, visitor_id, type, source, occurred_at_utc) SELECT id, '00000000-0000-0000-0000-00000000c1c1', 2, 5, now() - interval '1 day' FROM ($demo LIMIT 1) AS one"
+          dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --refresh-demo
+          # All 64 events are ahead again, within the coming two weeks, and the old traffic is gone.
+          test "$(sql "SELECT count(*) FROM events WHERE id IN ($demo) AND end_at_utc > now() AND start_at_utc < now() + interval '15 days'")" = "64"
+          test "$(sql "SELECT count(*) FROM event_stats_daily WHERE event_id IN ($demo) AND impressions >= 1000000")" = "0"
+          test "$(sql "SELECT count(*) FROM interactions WHERE visitor_id = '00000000-0000-0000-0000-00000000c1c1'")" = "0"
+          # The new simulated month is rolled up exactly once.
+          test "$(sql "SELECT count(*) FROM interactions WHERE event_id IN ($demo)")" = "$(sql "SELECT sum(impressions + detail_views + navigations + shares) FROM event_stats_daily WHERE event_id IN ($demo)")"
       - name: Verify public API, authentication, and images
         shell: bash
         run: |

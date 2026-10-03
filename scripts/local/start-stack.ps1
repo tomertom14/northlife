@@ -4,17 +4,19 @@
   Works on Windows PowerShell 5.1 and PowerShell 7. Reads settings from .env.
 
   Usage:
-    powershell -File scripts/local/start-stack.ps1 [-Build] [-BootstrapAdmin] [-SeedDemo] [-Monitoring]
+    powershell -File scripts/local/start-stack.ps1 [-Build] [-BootstrapAdmin] [-SeedDemo] [-RefreshDemo] [-Monitoring]
 
     -Build           rebuild the northlife:local image first (after code changes)
     -BootstrapAdmin  create the administrator from the BootstrapAdmin__* values in .env
     -SeedDemo        add the demo catalogue and 30 days of simulated traffic (once)
+    -RefreshDemo     move the demo catalogue to the coming two weeks, with a new month of traffic
     -Monitoring      also start Prometheus (:9090) and Grafana (:3000)
 #>
 param(
   [switch]$Build,
   [switch]$BootstrapAdmin,
   [switch]$SeedDemo,
+  [switch]$RefreshDemo,
   [switch]$Monitoring,
   [int]$Port = 10000
 )
@@ -85,6 +87,12 @@ if ($SeedDemo) {
   Write-Host 'Seeding the demo catalogue and simulated traffic...'
   docker run --rm @common -e 'Analytics__WorkerEnabled=false' northlife:local --seed-demo 2>&1 |
     Select-String 'Demo data' | ForEach-Object { ($_.Line | ConvertFrom-Json).Message }
+}
+
+if ($RefreshDemo) {
+  Write-Host 'Moving the demo catalogue to the coming two weeks...'
+  docker run --rm @common northlife:local --refresh-demo 2>&1 |
+    Select-String 'Demo refreshed|No demo catalogue' | ForEach-Object { ($_.Line | ConvertFrom-Json).Message }
 }
 
 if (docker ps -a -q --filter 'name=^northlife-app$') {

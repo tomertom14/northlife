@@ -96,6 +96,7 @@ Other commands of the API, all run against the configured database unless noted:
 | --- | --- |
 | `--migrate` | Applies database migrations. |
 | `--seed-demo` | Adds 6 demo businesses, 64 events and 30 days of simulated traffic, once. |
+| `--refresh-demo` | Moves the 64 demo events to the coming two weeks and replaces their simulated traffic with a new month. |
 | `--seed-load N` | Adds N extra events for load tests. |
 | `--evaluate-recommendations [file]` | Runs the offline recommender evaluation. Needs no database. |
 
