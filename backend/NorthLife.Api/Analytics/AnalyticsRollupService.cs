@@ -37,7 +37,8 @@ public sealed class AnalyticsRollupService(AppDbContext dbContext, AnalyticsMetr
     /// <summary>After downtime, catch up in windows of at most this size to bound memory.</summary>
     public static readonly TimeSpan MaxWindow = TimeSpan.FromHours(6);
 
-    private const long RollupLockKey = 7_261_300;
+    /// <summary>Advisory lock held by whatever changes the rolled-up statistics: the worker and the demo seeder.</summary>
+    internal const long RollupLockKey = 7_261_300;
 
     /// <summary>
     /// Weight of one interaction in the popularity score. The worker sets it from the current

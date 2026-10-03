@@ -364,6 +364,36 @@ if (args.Contains("--seed-demo", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+if (args.Contains("--refresh-demo", StringComparer.OrdinalIgnoreCase))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+    var result = await scope.ServiceProvider.GetRequiredService<DemoSeeder>().RefreshAsync(CancellationToken.None);
+    if (result is null)
+    {
+        app.Logger.LogError("No demo catalogue to refresh; run --seed-demo first.");
+        Environment.ExitCode = 1;
+        return;
+    }
+
+    app.Logger.LogInformation(
+        "Demo refreshed: {Events} catalogue events now run from {FirstDay:yyyy-MM-dd} to {LastDay:yyyy-MM-dd}, with {Interactions} simulated interactions from {Visitors} visitors in place of their old traffic.",
+        result.Events, result.FirstDay, result.LastDay, result.Interactions, result.Visitors);
+
+    // The web service rebuilds the model every 15 minutes; rebuilding now makes "similar events" current at once.
+    try
+    {
+        var neighbours = await scope.ServiceProvider.GetRequiredService<NorthLife.Api.Recommendations.RecommendationModelService>().RefreshAsync(CancellationToken.None);
+        app.Logger.LogInformation("Recommendation model rebuilt with {NeighbourCount} neighbours.", neighbours);
+    }
+    catch (Exception exception) when (exception is DbUpdateException or Npgsql.PostgresException)
+    {
+        app.Logger.LogWarning(exception, "The recommendation model was not rebuilt; the web service rebuilds it within 15 minutes.");
+    }
+
+    return;
+}
+
 if (args.Contains("--seed-load", StringComparer.OrdinalIgnoreCase))
 {
     // "--seed-load 10000": extra events for performance tests.

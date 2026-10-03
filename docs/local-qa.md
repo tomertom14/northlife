@@ -48,6 +48,12 @@ powershell -File scripts/local/start-stack.ps1 -SeedDemo
 
 To start from a completely empty database, `docker compose down` then `docker volume rm northlife_northlife-postgres`, and run the start script with `-BootstrapAdmin -SeedDemo`.
 
+The demo events cover the two weeks after the seed. To move them to the coming two weeks with a new month of simulated traffic, and keep everything else, use `-RefreshDemo`:
+
+```powershell
+powershell -File scripts/local/start-stack.ps1 -RefreshDemo
+```
+
 > **Warning:** this permanently deletes every account and event in your local database.
 
 The automated end-to-end scripts create test events with names like "…לבדיקת…". Reset afterwards if you want a clean demo.

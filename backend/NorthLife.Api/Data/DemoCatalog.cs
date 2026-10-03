@@ -1,3 +1,4 @@
+using NorthLife.Api.Analytics;
 using NorthLife.Api.Models;
 
 namespace NorthLife.Api.Data;
@@ -5,6 +6,18 @@ namespace NorthLife.Api.Data;
 public sealed record DemoEventSpec(EventCategory Category, string Title, string Detail, string[] Tags);
 
 public sealed record DemoLocality(string Name, decimal Latitude, decimal Longitude);
+
+/// <summary>One catalogue event placed in time and space; see <see cref="DemoCatalog.Schedule"/>.</summary>
+public sealed record DemoEventPlan(
+    DemoEventSpec Spec,
+    DemoLocality Locality,
+    string Venue,
+    decimal Price,
+    decimal Latitude,
+    decimal Longitude,
+    DateTimeOffset StartAtUtc,
+    DateTimeOffset EndAtUtc,
+    bool IsHighlighted);
 
 /// <summary>
 /// A reproducible demo catalogue for local testing and for the ranking and recommendation
@@ -134,6 +147,42 @@ public static class DemoCatalog
         new(EventCategory.Other, "יריד ספרים", "הוצאות קטנות, סופרים מקומיים וספרים משומשים", ["ספרים", "קריאה", "יריד", "ספרות"]),
         new(EventCategory.Other, "ערב קוויז בפאב", "קוויז טריוויה בקבוצות עם פרסים", ["קוויז", "פאב", "חברים", "טריוויה"]),
     ];
+
+    /// <summary>The catalogue covers today and the following 13 days.</summary>
+    public const int ScheduleDays = 14;
+
+    /// <summary>
+    /// Where, when and at what price each catalogue event takes place, as if the catalogue were seeded at
+    /// <paramref name="now"/>. The fixed random seed gives every call the same venues, prices, start hours
+    /// and day offsets, so only the dates follow <paramref name="now"/>: "--seed-demo" creates the events
+    /// from it and "--refresh-demo" moves them back onto it. The first event of each category is today, so
+    /// the "today" feed has something in every category, and an event that would already be over moves to
+    /// the next day.
+    /// </summary>
+    public static IReadOnlyList<DemoEventPlan> Schedule(DateTimeOffset now)
+    {
+        var random = new Random(2026);
+        var today = JerusalemDays.Of(now);
+        var firstOfCategory = new HashSet<EventCategory>();
+        var highlighted = new HashSet<EventCategory> { EventCategory.Music, EventCategory.Nightlife, EventCategory.Food, EventCategory.Workshops, EventCategory.Outdoors, EventCategory.Culture };
+        var plan = new List<DemoEventPlan>(Events.Length);
+        foreach (var spec in Events)
+        {
+            var locality = Localities[random.Next(Localities.Length)];
+            var hours = StartHours(spec.Category);
+            var dayOffset = firstOfCategory.Add(spec.Category) ? 0 : random.Next(0, ScheduleDays);
+            var start = JerusalemDays.StartUtc(today.AddDays(dayOffset)).AddHours(hours[random.Next(hours.Length)]).AddMinutes(random.Next(0, 2) * 30);
+            var duration = TimeSpan.FromHours(DurationHours(spec.Category, random));
+            if (start + duration <= now) start = start.AddDays(1);
+            var price = Price(spec.Category, random);
+            var venue = Venue(spec.Category, random);
+            var latitude = locality.Latitude + (decimal)((random.NextDouble() - 0.5) * 0.01);
+            var longitude = locality.Longitude + (decimal)((random.NextDouble() - 0.5) * 0.01);
+            plan.Add(new DemoEventPlan(spec, locality, venue, price, latitude, longitude, start, start + duration, highlighted.Remove(spec.Category)));
+        }
+
+        return plan;
+    }
 
     /// <summary>Hours of the day (Israel time) when events of a category usually start.</summary>
     public static int[] StartHours(EventCategory category) => category switch

@@ -100,6 +100,18 @@ history -c
 - The demo businesses sign in as `owner1@demo.northlife.local` … `owner6@demo.northlife.local`.
 - To hide all of it later, suspend those six owners on the admin Users page. Their events, places and images leave every public page at once, and lifting the suspension brings them back.
 
+The demo events cover only the two weeks after the seed; after that the feed empties. Running `--seed-demo` again does nothing, because the demo owners exist. Before a review or a presentation, refresh the demo from the Shell tab:
+
+```sh
+dotnet NorthLife.Api.dll --refresh-demo
+```
+
+- It moves the 64 demo events to the coming two weeks and replaces their traffic with a new simulated month. The feed, the "hot now" order and the owners' charts look current again.
+- Accounts, passwords, places and images stay. Events the demo owners added themselves keep their dates.
+- Real visits recorded on the 64 demo events are replaced too.
+- It is safe while the site is running, and it can be run again at any time. The log line `Demo refreshed: …` gives the new date range.
+- Run it in the morning of the day you need it. The day's events that are already over move to the next day, so an evening run leaves few events on today's feed.
+
 ## 6. Verify
 
 From your machine:
