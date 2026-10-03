@@ -12,6 +12,10 @@ describe('AuthStore and interceptor', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
+    // Specs share one browser environment: start clean so another spec's storage (the anonymous analytics
+    // visitor id, for instance) cannot leak into the storage assertions below.
+    localStorage.clear();
+    sessionStorage.clear();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
@@ -75,6 +79,20 @@ describe('AuthStore and interceptor', () => {
   });
 
   it('never writes the session to browser storage', () => {
+    store.login({ email: 'owner@example.com', password: 'StrongPass123' }).subscribe();
+    http.expectOne('/api/auth/login').flush({
+      token: 'signed-token',
+      expiresAt: '2026-09-23T09:00:00Z',
+      user: {
+        id: '019924c0-0000-7000-8000-000000000100',
+        fullName: 'Test Owner',
+        email: 'owner@example.com',
+        businessName: 'Test Business',
+        role: 'BusinessOwner',
+      },
+    });
+
+    expect(store.isAuthenticated()).toBe(true);
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.length).toBe(0);
   });
