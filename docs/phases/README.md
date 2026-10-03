@@ -30,6 +30,6 @@ Do not mark a phase complete until its checks and all prerequisite regression ch
 | 13 | [Analytics](phase-13.md) |
 | 14 | [Smart Ranking and "Near Me"](phase-14.md) |
 | 15 | [Recommendations ("For You")](phase-15.md) |
-| 16 | Deployment, on hold until local QA passes |
+| 16 | [Production Deployment](phase-16.md) |
 | 17 | [Automatic Event Approval](phase-17.md) |
 | 18 | [Places](phase-18.md) |
