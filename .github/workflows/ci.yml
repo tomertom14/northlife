@@ -198,7 +198,10 @@ jobs:
             sleep 1
           done
           curl --fail --silent 'http://127.0.0.1:5080/api/manage/analytics?days=7' --header "Authorization: Bearer $token" | jq -e --arg id "$event_id" '.totals.navigations >= 1 and .totals.uniqueVisitors >= 1 and (.events | any(.id == $id and .detailViews >= 1))'
-          curl --fail --silent http://127.0.0.1:5080/metrics | grep -q '^northlife_analytics_interactions_recorded_total'
+          # Read the whole response first: under pipefail, grep -q stopping at its first match makes curl fail
+          # with a write error (exit 23).
+          metrics=$(curl --fail --silent http://127.0.0.1:5080/metrics)
+          grep -q '^northlife_analytics_interactions_recorded_total' <<< "$metrics"
           # The demo seed rolled a simulated month up for its owners.
           demo_token=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/auth/login --header 'Content-Type: application/json' --data '{"email":"owner1@demo.northlife.local","password":"DemoOwnerCi-2026"}' | jq -r '.token')
           curl --fail --silent 'http://127.0.0.1:5080/api/manage/analytics?days=30' --header "Authorization: Bearer $demo_token" | jq -e '.totals.impressions > 100 and .totals.uniqueVisitors > 10 and (.daily | length) == 30'
@@ -219,7 +222,8 @@ jobs:
           curl --fail --silent --request POST http://127.0.0.1:5080/api/analytics/events --header 'Content-Type: application/json' --data "{\"visitorId\":\"$reco_visitor\",\"interactions\":[{\"eventId\":\"$first_event\",\"type\":\"DetailView\",\"source\":\"Feed\",\"position\":1}]}" | jq -e '.recorded == 1'
           curl --fail --silent "http://127.0.0.1:5080/api/recommendations?visitorId=$reco_visitor&limit=5" | jq -e --arg id "$first_event" '.personalised == true and all(.items[]; .event.id != $id)'
           curl --fail --silent "http://127.0.0.1:5080/api/events/$first_event/similar" | jq -e --arg id "$first_event" 'length >= 1 and all(.[]; .id != $id)'
-          dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --evaluate-recommendations evaluation.md | grep -q 'Oracle'
+          dotnet run --project backend/NorthLife.Api --configuration Release --no-build --no-launch-profile -- --evaluate-recommendations evaluation.md > /dev/null
+          grep -q 'Oracle' evaluation.md
 
           rejected_payload=$(echo "$event_payload" | jq '.title = "CI rejected event"')
           rejected_event=$(curl --fail --silent --request POST http://127.0.0.1:5080/api/manage/events --header "Authorization: Bearer $token" --header 'Content-Type: application/json' --data "$rejected_payload")
